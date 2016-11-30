@@ -1,0 +1,42 @@
+<workout_file>
+    <author>{{author}}</author>
+    <name>{{name}}</name>
+    <description>{{description}}</description>
+    <sportType>{{sport}}</sportType>{{#tags}}
+		<tags>{{#tag}}
+				<tag name="{{name}}"/>{{/tag}}
+    </tags>{{/tags}}
+    <workout>
+		{{#workout}}
+			{{#comment}}
+			
+			<!-- {{comment}} -->
+			{{/comment}}
+      {{#warmup}}
+				<Warmup Duration="{{duration}}" PowerLow="{{power}}" PowerHigh="{{power_high}}"{{#cadence}} Cadence="{{cadence}}" CadenceResting="{{cadence_off}}"{{/cadence}}>{{#textevent}}
+						<textevent timeoffset="{{offset}}" message="{{message}}"/>{{/textevent}}
+				</Warmup>
+      {{/warmup}}
+      {{#steadystate}}
+        <SteadyState Duration="{{duration}}" Power="{{power}}"{{#cadence}} Cadence="{{cadence}}"{{/cadence}}>{{#textevent}}
+						<textevent timeoffset="{{offset}}" message="{{message}}"/>{{/textevent}}
+				</SteadyState>
+      {{/steadystate}}
+      {{#intervalst}}
+        <IntervalsT Repeat="{{repeat}}" OnDuration="{{duration}}" OffDuration="{{duration_off}}" OnPower="{{power}}" OffPower="{{power_off}}"{{#cadence}} Cadence="{{cadence}}"{{/cadence}}>{{#textevent}}
+						<textevent timeoffset="{{offset}}" message="{{message}}"/>{{/textevent}}
+				</IntervalsT>
+      {{/intervalst}}
+      {{#ramp}}
+        <Ramp Duration="{{duration}}" PowerLow="{{power}}" PowerHigh="{{power_high}}">{{#textevent}}
+						<textevent timeoffset="{{offset}}" message="{{message}}"/>{{/textevent}}
+				</Ramp>
+	    {{/ramp}}
+	    {{#freeride}}
+        <FreeRide Duration="{{duration}}"{{#flatroad}} FlatRoad="{{flatroad}}"{{/flatroad}}>{{#textevent}}
+						<textevent timeoffset="{{offset}}" message="{{message}}"/>{{/textevent}}
+				</FreeRide>
+		  {{/freeride}}
+		{{/workout}}
+    </workout>
+</workout_file>

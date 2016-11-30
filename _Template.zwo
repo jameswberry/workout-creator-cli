@@ -1,0 +1,31 @@
+<workout_file>
+    <author>J.Berry</author>
+    <name>Template Workout</name>
+    <description>This is a template workout file to build from. Created in the native Zwift Workout Creator</description>
+    <sportType>bike</sportType>
+    <tags>
+        <tag name="RECOVERY"/>
+        <tag name="INTERVALS"/>
+        <tag name="FTP"/>
+        <tag name="TT"/>
+        <tag name=""/>
+    </tags>
+    <workout>
+        <Warmup Duration="600" PowerLow="0.24880478" PowerHigh="0.75079679" Cadence="100" CadenceResting="0"/>
+        <SteadyState Duration="300" Power="0.49980077" Cadence="90"/>
+        <SteadyState Duration="300" Power="0.65119523"/>
+        <SteadyState Duration="300" Power="0.81055778"/>
+        <SteadyState Duration="300" Power="0.94999999"/>
+        <SteadyState Duration="300" Power="1.1013944"/>
+        <SteadyState Duration="300" Power="1.2488048">
+            <textevent timeoffset="289.81439" message="Intervals!"/>
+        </SteadyState>
+        <IntervalsT Repeat="4" OnDuration="60" OffDuration="300" OnPower="0.75079679" OffPower="0.49980077"/>
+        <Ramp Duration="600" PowerLow="0.75079679" PowerHigh="0.24880478">
+            <textevent timeoffset="-15" message="Steady State"/>
+        </Ramp>
+        <FreeRide Duration="600" FlatRoad="1">
+            <textevent timeoffset="-15" message="Steady State"/>
+        </FreeRide>
+    </workout>
+</workout_file>

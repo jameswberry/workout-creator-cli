@@ -1,0 +1,28 @@
+Phase,Class,Type,Value,Offset,Repeat,Duration,DurationOff,Power,PowerLow,PowerHigh,PowerOff,Cadence,CadenceLow,CadenceHigh,CadenceOff
+WorkoutCreator,1,Author,J.Berry,,,,,,,,,,,,
+WorkoutCreator,1,Name,Template Workout,,,,,,,,,,,,
+WorkoutCreator,1,Description,This is a template workout file to build from. Created in the native Zwift Workout Creator.,,,,,,,,,,,,
+WorkoutCreator,1,Sport,bike,,,,,,,,,,,,
+WorkoutCreator,1,Tag,RECOVERY,,,,,,,,,,,,
+WorkoutCreator,1,Tag,INTERVALS,,,,,,,,,,,,
+WorkoutCreator,1,Tag,FTP,,,,,,,,,,,,
+WorkoutCreator,1,Tag,TT,,,,,,,,,,,,
+WorkoutCreator,1,Tag,,,,,,,,,,,,,
+WorkoutCreator,1,Warmup,Warmup Block,,,600,,0.24880478,,0.75079679,,100,,,0
+WorkoutCreator,1,SteadyState,,,,300,,0.49980077,,,,90,,,0
+WorkoutCreator,1,SteadyState,,,,300,,0.65119523,,,,0,,,0
+WorkoutCreator,1,SteadyState,,,,300,,0.81055778,,,,0,,,0
+WorkoutCreator,1,SteadyState,,,,300,,0.94999999,,,,0,,,0
+WorkoutCreator,1,SteadyState,,,,300,,1.1013944,,,,0,,,0
+WorkoutCreator,1,SteadyState,,,,300,,1.2488048,,,,0,,,0
+WorkoutCreator,1,TextEvent,Intervals!,289.81439,,,,,,,,,,,
+WorkoutCreator,1,IntervalsT,,,4,60,300,0.75079679,,0.24880478,,,,,
+WorkoutCreator,1,Ramp,,,,600,,0.75079679,,,0.49980077,,,,
+WorkoutCreator,1,TextEvent,Ramp Block,-15,,,,,,,,,,,
+WorkoutCreator,1,FreeRide,,,,600,,,,,,,,,
+WorkoutCreator,1,TextEvent,Free Ride Block,-15,,,,,,,,,,,
+,,,,,,,,,,,,
+WorkoutCreator,1,Rest,,,,300,,0.49980077,,,,90,,,0
+WorkoutCreator,1,Rest,Rest Block,,,300,,0.49980077,,,,90,,,0
+WorkoutCreator,1,ActiveRest,,,,300,,0.49980077,,,,90,,,0
+WorkoutCreator,1,ActiveRest,Active Rest Block,,,300,,0.49980077,,,,90,,,0

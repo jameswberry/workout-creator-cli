@@ -1,0 +1,20 @@
+{
+  "name": "workout-creator-cli",
+  "version": "1.0.0",
+  "description": "A command line tool for ZWO Workout Creation and Management",
+  "main": "WorkoutCreator.js",
+  "scripts": {
+    "start": "node WorkoutCreator"
+  },
+  "repository": "https://github.com/jameswberry/workout-creator-cli",
+  "keywords": [],
+  "author": "James W. berry",
+  "license": "",
+  "dependencies": {
+    "csvtojson": "^1.0.3",
+    "mustache": "^2.3.0",
+    "optimist": "^0.6.1",
+    "prompt": "^1.0.0"
+  },
+  "devDependencies": {}
+}
