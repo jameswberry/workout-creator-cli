@@ -31,11 +31,11 @@ The following "columns" are required in the input CSV.
   - The incremental class number within the phase (e.g. 1, 2, 3, 4)
 - **Type**
   - The type of block in the class. (e.g. Author, SteadyState, etc.)
-  - See: _Workout Block Types_ for **Type** value definitions
+  - See: [Workout Block Types](#workout-block-types) for **Type** value definitions
 - **Value**
   - A value or message associated with the Phase:Class:Type block.
 - **Offset**
-  - Time offset for blocks of type TEXTEVENT. (Seconds)
+  - Time offset for blocks of type [TEXTEVENT](#textevent). (Seconds)
 - **Repeat**
   - Number of times to repeat the block.
 - **Duration**
