@@ -3,6 +3,25 @@ A command line tool for ZWO Workout Creation and Management
 
 Convert CSV data into Zwift Workout Files.
 
+# Usage
+
+```cli
+> npm install workout-creator-cli
+
+> cd workout-creator-cli
+
+Interactive mode
+> node WorkoutCreator
+Input [.csv] > (WorkoutCreator.csv) 
+Output Directory > (./) 
+Template [.mustache] > (WorkoutCreator.mustache) 
+Verbose > (true) 
+Debug > (false) 
+
+CLI Args
+> node WorkoutCreator --input WorkoutCreator.csv --output ./ --template WorkoutCreator.mustache -- verbose true --debug true
+```
+
 # CSV Format
 The following "columns" are required in the input CSV.
 
