@@ -139,14 +139,20 @@ Prompt.get(properties, function (err, result) {
 	});
 });
 
+// Phase is required as a global for TextEvents
+var phase;
+
+// Classnum is required as a global for TextEvents
+var classnum;
+
+/**
+ * csv - csv-to-json conversaion data structure.
+ */
 function WorkoutProcessor(csv) {
 	var phases		= {};
-	var phase;
-	var classnum;
 	var classname;
 	var type;
 	var workout, workouts;
-	var textevents;
 
 	for(line in csv) {
 		// Convert line to an integer for indexing the csv array later. (searching for textevents)
@@ -160,356 +166,339 @@ function WorkoutProcessor(csv) {
 				phases[phase] = Array();
 			}
 		
-			if (csv[line].Class != '') { 
-				classnum = csv[line].Class-1;
-			
-				// Initialize Class Object
-				if (phases[phase][classnum] === undefined) {
-					phases[phase][classnum] = {
-						'author'		: '',
-						'name'			: '',
-						'description'	: '',
-						'sport'			: '',
-						'tags'			: false,
-						'workout'		: Array()
-					};
-				}
+			if (csv[line].Class != '' ) {
+				type = csv[line].Type.toLowerCase();
 
-				// Initialize TextEvents
-				textevents = [];
+				// Skip TextEvents since they are already processed as part of blocks.
+				if (type !== 'textevent') {
 
-				// Process Block Text Event
-				if (csv[line].Value !== undefined && csv[line].Value !== '') {
-					textevents.push(TextEvent(0, csv[line].Value));
-				}
+					// Reset Class Set Number when moving between Classes.
+					if (csv[line].Class-1 != classnum) TextEvents.resetSetNum(phase,csv[line].Class-1);
 				
-				// Process additional Block Text Events
-				if (csv[line+1] !== undefined) {
-					for (var te=1; te<(csv.length-line); te++) { // Only search to the end of the csv array.
-						if ( csv[line+te] === undefined ) {
-							break;
-						} else if(csv[line+te].Type.toLowerCase() === 'textevent') {
-							textevents.push(TextEvent(csv[line+te].Offset, csv[line+te].Value));
-						} else {
-							break;
+					classnum = csv[line].Class-1;
+
+					// Increment Class Set Number for sets
+					 TextEvents.incrementSetNum(phase,classnum);
+			
+					// Initialize Class Object
+					if ( phases[phase][classnum] === undefined ) {
+						phases[phase][classnum] = {
+							'author'		: '',
+							'name'			: '',
+							'description'	: '',
+							'sport'			: '',
+							'tags'			: false,
+							'workout'		: Array()
+						};
+					}
+
+					// Process Block Text Event
+					if ( csv[line].Value !== undefined && csv[line].Value !== '' ) {
+						TextEvents.addEvent(csv[line].Value, phase,classnum);
+					}
+				
+					// Process additional Block Text Events
+					if ( csv[line+1] !== undefined ) {
+						for ( var te=1; te<(csv.length-line); te++ ) { // Only search to the end of the csv array.
+							if ( csv[line+te] === undefined ) {
+								break;
+							} else if( csv[line+te].Type.toLowerCase() === 'textevent' ) {
+								TextEvents.addEvent(csv[line+te].Value, phase,classnum);
+							} else {
+								break;
+							}
 						}
 					}
-				}
 				
-				// Reset for template section if empty
-				if (textevents.length == 0) textevents = null;
+				// Process Workout
+					workout		= null;
+					workouts	= null;
+					switch ( type ) {
+
+				// WORKOUT DETAILS
+					case 'author':
+						phases[phase][classnum].author = csv[line].Value;
+						workout = false;
+						TextEvents.deleteSet(phase,classnum);
+						break;
+
+					case 'name':
+						if (csv[line].Class<10) {
+							classname = '0'+csv[line].Class;
+						} else { 
+							classname = csv[line].Class;
+						}
+						phases[phase][classnum].name = csv[line].Phase+' #'+classname+': '+csv[line].Value;
+						workout = false;
+						TextEvents.deleteSet(phase,classnum);
+						break;
+
+					case 'description':
+						phases[phase][classnum].description = csv[line].Value;
+						workout = false;
+						TextEvents.deleteSet(phase,classnum);
+						break;
+
+					case 'sport':
+						phases[phase][classnum].sport = csv[line].Value.toLowerCase();
+						workout = false;
+						TextEvents.deleteSet(phase,classnum);
+						break;
+
+					case 'tag':
+						// Initialize Tags
+						if (phases[phase][classnum].tag	=== undefined) {
+							phases[phase][classnum].tags = true;
+							phases[phase][classnum].tag = [];
+						}
+						if (csv[line].Value.toLowerCase() == 'recovery' ||
+							csv[line].Value.toLowerCase() == 'intervals' ||
+							csv[line].Value.toLowerCase() == 'ftp' ||
+							csv[line].Value.toLowerCase() == 'tt') {
+								csv[line].Value = csv[line].Value.toUpperCase();
+						}
+						phases[phase][classnum].tag.push({ 'name': csv[line].Value });
+						workout = false;
+						TextEvents.deleteSet(phase,classnum);
+						break;
+
+					case 'textevent':
+						// NOTE: Should never get here because we have already skipped this processing for TextEvents.
+						workout = false;
+						break;
+
+				// DEFAULT WORKOUT BLOCKS
+					case 'warmup':
+						workout = WarmUp(		csv[line].Duration,
+										 		csv[line].Power,
+										 		csv[line].PowerHigh,
+										 		csv[line].Cadence);
+						break;
+
+					case 'ramp':
+						workout = Ramp(			csv[line].Duration,
+												csv[line].Power,
+												csv[line].PowerHigh,
+												csv[line].Cadence,
+												csv[line].CadenceOff);
+						break;
+
+					case 'steadystate':
+						workout = SteadyState(	csv[line].Duration,
+												csv[line].Power,
+												csv[line].Cadence,
+												csv[line].CadenceOff);
+						break;
+
+					case 'intervalst':
+						workout = IntervalsT(	csv[line].Repeat,
+												csv[line].Duration,
+												csv[line].DurationOff,
+												csv[line].Power,
+												csv[line].PowerOff,
+												csv[line].Cadence,
+												csv[line].CadenceOff);
+						break;
+
+					case 'freeride':
+						workout = FreeRide(		csv[line].Duration,
+												1);
+						break;
 				
-			// Process Workout
-				workout		= null;
-				workouts	= null;
-				type = csv[line].Type.toLowerCase();
-				switch (type) {
-
-			// WORKOUT DETAILS
-				case 'author':
-					phases[phase][classnum].author = csv[line].Value;
-					workout = false;
-					break;
-
-				case 'name':
-					if (csv[line].Class<10) {
-						classname = '0'+csv[line].Class;
-					} else { 
-						classname = csv[line].Class;
-					}
-					phases[phase][classnum].name = csv[line].Phase+' #'+classname+': '+csv[line].Value;
-					workout = false;
-					break;
-
-				case 'description':
-					phases[phase][classnum].description = csv[line].Value;
-					workout = false;
-					break;
-
-				case 'sport':
-					phases[phase][classnum].sport = csv[line].Value.toLowerCase();
-					workout = false;
-					break;
-
-				case 'tag':
-					// Initialize Tags
-					if (phases[phase][classnum].tag	=== undefined) {
-						phases[phase][classnum].tags = true;
-						phases[phase][classnum].tag = [];
-					}
-					if (csv[line].Value.toLowerCase() == 'recovery' ||
-						csv[line].Value.toLowerCase() == 'intervals' ||
-						csv[line].Value.toLowerCase() == 'ftp' ||
-						csv[line].Value.toLowerCase() == 'tt') {
-							csv[line].Value = csv[line].Value.toUpperCase();
-					}
-					phases[phase][classnum].tag.push({ 'name': csv[line].Value });
-					workout = false;
-					break;
-
-				case 'textevent':
-					workout = false;
-					break;
-
-			// DEFAULT WORKOUT BLOCKS
-				case 'warmup':
-					workout = WarmUp(		csv[line].Duration,
-									 		csv[line].Power,
-									 		csv[line].PowerHigh,
-									 		csv[line].Cadence,
-									 		textevents);
-					break;
-
-				case 'ramp':
-					workout = Ramp(			csv[line].Duration,
-											csv[line].Power,
-											csv[line].PowerHigh,
-											csv[line].Cadence,
-											csv[line].CadenceOff,
-											textevents);
-					break;
-
-				case 'steadystate':
-					workout = SteadyState(	csv[line].Duration,
-											csv[line].Power,
-											csv[line].Cadence,
-											csv[line].CadenceOff,
-											textevents);
-					break;
-
-				case 'intervalst':
-					workout = IntervalsT(	csv[line].Repeat,
-											csv[line].Duration,
-											csv[line].DurationOff,
-											csv[line].Power,
-											csv[line].PowerOff,
-											csv[line].Cadence,
-											csv[line].CadenceOff,
-											textevents);
-					break;
-
-				case 'freeride':
-					workout = FreeRide(		csv[line].Duration,
-											1,
-											textevents);
-					break;
-				
-			// CUSTOM WORKOUT BLOCKS
-				case 'progressivewarmup':
-					if (textevents === null) textevents = [];
-					textevents.push(TextEvent(0,'Progressive Warmup'));
+				// CUSTOM WORKOUT BLOCKS
+					case 'progressivewarmup':
+						TextEvents.addEvent('Progressive Warmup',phase,classnum);
 					
-					workout = ProgressiveWarmup(csv[line].Duration,
-											csv[line].PowerLow,
-											csv[line].PowerHigh,
-											csv[line].CadenceLow,
-											csv[line].CadenceHigh,
-											csv[line].Repeat,
-											textevents);
-					break;
+						workout = ProgressiveWarmup(csv[line].Duration,
+												csv[line].PowerLow,
+												csv[line].PowerHigh,
+												csv[line].CadenceLow,
+												csv[line].CadenceHigh,
+												csv[line].Repeat);
+						break;
 
-				case 'steadybuild':
-					if (textevents === null) textevents = [];
-					textevents.push(TextEvent(0,'Steady Build'));
+					case 'steadybuild':
+						TextEvents.addEvent('Steady Build',phase,classnum);
+						
+						workout = SteadyBuild(	csv[line].Duration,
+												csv[line].DurationOff,
+												csv[line].PowerLow,
+												csv[line].PowerHigh,
+												csv[line].CadenceLow,
+												csv[line].CadenceHigh);
+						break;
+
+					case 'progressivebuild':
+						TextEvents.addEvent('Progressive Build',phase,classnum);
+						TextEvents.addEvent('Build power and cadence together',phase,classnum);
 					
-					workout = SteadyBuild(	csv[line].Duration,
-											csv[line].DurationOff,
-											csv[line].PowerLow,
-											csv[line].PowerHigh,
-											csv[line].CadenceLow,
-											csv[line].CadenceHigh,
-											textevents);
-					break;
+						workout = ProgressiveBuild(csv[line].Duration,
+												csv[line].PowerLow,
+												csv[line].PowerHigh,
+												csv[line].CadenceLow,
+												csv[line].CadenceHigh,
+												csv[line].Repeat);
+						break;
 
-				case 'progressivebuild':
-					if (textevents === null) textevents = [];
-					textevents.push(TextEvent(0,'Progressive Build'));
-					textevents.push(TextEvent(10,'Build power and cadence together'));
+					case 'progression':
+						workout = Progression(	csv[line].Duration,
+												csv[line].PowerLow,
+												csv[line].PowerHigh,
+												csv[line].CadenceLow,
+												csv[line].CadenceHigh,
+												csv[line].Repeat);
+						break;
+
+					case 'rest':
+						TextEvents.addEvent('Full Recovery',phase,classnum);
 					
-					workout = ProgressiveBuild(csv[line].Duration,
-											csv[line].PowerLow,
-											csv[line].PowerHigh,
-											csv[line].CadenceLow,
-											csv[line].CadenceHigh,
-											csv[line].Repeat,
-											textevents);
-					break;
+						workout = Rest(			csv[line].Duration,
+												csv[line].Power);
+						break;
 
-				case 'progression':
-					workout = Progression(	csv[line].Duration,
-											csv[line].PowerLow,
-											csv[line].PowerHigh,
-											csv[line].CadenceLow,
-											csv[line].CadenceHigh,
-											csv[line].Repeat,
-											textevents);
-					break;
-
-				case 'rest':
-					if (textevents === null) textevents = [];
-					textevents.push(TextEvent(0,'Rest. Full Recovery'));
-					
-					workout = Rest(			csv[line].Duration,
-											csv[line].Power,
-											textevents);
-					break;
-
-				case 'activerest':
-					if (textevents === null) textevents = [];
-					textevents.push(TextEvent(0,'Active Rest'));
-					
-					workout = ActiveRest(	csv[line].Duration,
-											csv[line].Power,
-											csv[line].Cadence,
-											textevents);
-					break;
+					case 'activerest':
+						TextEvents.addEvent('Active Rest',phase,classnum);
 					
 				case 'alternatingclimb':
-					if (textevents === null) textevents = [];
-					textevents.push(TextEvent(0,'Alternate Seated Climbing with Standing'));
-					textevents.push(TextEvent(5,'Climb (Seated)'));
-					textevents.push(TextEvent(0,'Climb (Seated)'));
-					textevents.push(TextEvent(0,'Stand'));
-					textevents.push(TextEvent(0,'Descent!'));
-
-					workout = Climbing(		csv[line].Duration,
-						 					csv[line].Power,
-											csv[line].Cadence,
-											csv[line].PowerLow,
-											csv[line].CadenceLow,
-											csv[line].PowerHigh,
-											csv[line].CadenceHigh,
-											csv[line].DurationOff,
-											csv[line].CadenceOff,
-											csv[line].Repeat,
-											textevents);
-					break;
-
-				case 'climbing':
-					workout = Climbing(		csv[line].Duration,
-						 					csv[line].Power,
-											csv[line].Cadence,
-											csv[line].PowerLow,
-											csv[line].CadenceLow,
-											csv[line].PowerHigh,
-											csv[line].CadenceHigh,
-											csv[line].DurationOff,
-											csv[line].CadenceOff,
-											csv[line].Repeat,
-											textevents);
-					break;
-
-				case 'seatedroller':
-					if (textevents === null) textevents = [];
-					textevents.push(TextEvent(0,'Seated Roller'));
-					textevents.push(TextEvent(5,'Mix RPM from smooth seated rollers'));
-					textevents.push(TextEvent(10,'Tension on chain'));
-					textevents.push(TextEvent(15,'Smooth transitions from climb to descend'));
-
-					workout = SeatedRoller( csv[line].DurationOff,
-											csv[line].PowerOff,
-											csv[line].CadenceOff,
-											csv[line].Duration,
-											csv[line].Power,
-											csv[line].CadenceLow,
-											csv[line].CadenceHigh,
-											csv[line].Repeat,
-											textevents);
-					break;
-
-				case 'standingroller':
-					if (textevents === null) textevents = [];
-					textevents.push(TextEvent(0,'Standing Roller'));
-					textevents.push(TextEvent(5,'Base'));
-					textevents.push(TextEvent(0,'Base'));
-					textevents.push(TextEvent(0,'Approach'));
-					textevents.push(TextEvent(0,'Climbing out of the saddle'));
-					textevents.push(TextEvent(0,'Descent'));
+						workout = ActiveRest(	csv[line].Duration,
+												csv[line].Power,
+												csv[line].Cadence);
+						break;
 					
-					workout = StandingRoller(csv[line].Duration,
-											csv[line].Power,
-											csv[line].CadenceOff,
-											csv[line].Cadence,
-											csv[line].CadenceLow,
-											csv[line].CadenceHigh,
-											textevents);
-					break;
+					case 'alternatingclimb':
+						TextEvents.addEvent('Alternate Seated Climbing with Standing',phase,classnum);
+						TextEvents.addEvent('Climb (Seated)',phase,classnum);
+						TextEvents.addEvent('Climb (Seated)',phase,classnum);
+						TextEvents.addEvent('Stand',phase,classnum);
+						TextEvents.addEvent('Descent!',phase,classnum);
 
-				case 'paceline':
-					if (textevents === null) textevents = [];
-					textevents.push(TextEvent(0,'Paceline'));
-					textevents.push(TextEvent(5,'Base'));
-					textevents.push(TextEvent(0,'Base'));
-					textevents.push(TextEvent(0,'Front - Pulling'));
-					textevents.push(TextEvent(0,'Drafting'));
-					textevents.push(TextEvent(0,'Front - Climbing'));
-															
-					workout = Paceline(		csv[line].Duration,
-											csv[line].Power,
-											csv[line].Cadence,
-											csv[line].PowerLow,
-											csv[line].CadenceLow,
-											csv[line].PowerHigh,
-											csv[line].CadenceHigh,
-											csv[line].PowerOff,
-											csv[line].CadenceOff,
-											csv[line].Repeat,
-											textevents);
-					break;
+						workout = Climbing(		csv[line].Duration,
+							 					csv[line].Power,
+												csv[line].Cadence,
+												csv[line].PowerLow,
+												csv[line].CadenceLow,
+												csv[line].PowerHigh,
+												csv[line].CadenceHigh,
+												csv[line].DurationOff,
+												csv[line].CadenceOff,
+												csv[line].Repeat);
+						break;
 
-				case 'cooldown':
-					// We HATES the default '<RAMP>' implementation, so let's do something better.
-					// Swaps PowerHigh and Power
-					if (textevents === null) textevents = [];
-					textevents.push(TextEvent(0,'Cool Down'));
+					case 'climbing':
+						workout = Climbing(		csv[line].Duration,
+							 					csv[line].Power,
+												csv[line].Cadence,
+												csv[line].PowerLow,
+												csv[line].CadenceLow,
+												csv[line].PowerHigh,
+												csv[line].CadenceHigh,
+												csv[line].DurationOff,
+												csv[line].CadenceOff,
+												csv[line].Repeat);
+						break;
 
-					workout = CoolDown(		csv[line].Duration,
-											csv[line].PowerHigh,
-											csv[line].PowerLow,
-											csv[line].CadenceHigh,
-											csv[line].CadenceLow,
-											csv[line].Repeat,
-											textevents);
-					break;
+					case 'seatedroller':
+						TextEvents.addEvent('Seated Roller',phase,classnum);
+						TextEvents.addEvent('Mix RPM from smooth seated rollers',phase,classnum);
+						TextEvents.addEvent('Tension on chain',phase,classnum);
+						TextEvents.addEvent('Smooth transitions from climb to descend',phase,classnum);
 
-				case 'bigdaddies':
-					if (textevents === null) textevents = [];
-					textevents.push(TextEvent(0,'BIG DADDIES!'));
-					textevents.push(TextEvent(5,'STAY SEATED'));
-					textevents.push(TextEvent(10,'No bouncing'));
-					textevents.push(TextEvent(15,'Max RPM from standing start'));
-					textevents.push(TextEvent(20,'Complete recovery Rest'));
+						workout = SeatedRoller( csv[line].DurationOff,
+												csv[line].PowerOff,
+												csv[line].CadenceOff,
+												csv[line].Duration,
+												csv[line].Power,
+												csv[line].CadenceLow,
+												csv[line].CadenceHigh,
+												csv[line].Repeat);
+						break;
 
-					workout = BigDaddies(	csv[line].Repeat,
-											csv[line].Duration,
-											csv[line].DurationOff,
-											csv[line].Power,
-											csv[line].PowerOff,
-											csv[line].Cadence,
-											csv[line].CadenceOff,
-											textevents);
-					break;
-				case 'climbingpaceline':
-				default:
-					if (prompts.verbose) console.log('Unsupported Type: [' + type + ']');
-				}
+					case 'standingroller':
+						TextEvents.addEvent('Standing Roller',phase,classnum);
+						TextEvents.addEvent('Base',phase,classnum);
+						TextEvents.addEvent('Base',phase,classnum);
+						TextEvents.addEvent('Approach',phase,classnum);
+						TextEvents.addEvent('Climbing out of the saddle',phase,classnum);
+						TextEvents.addEvent('Descent',phase,classnum);
 
-			// Apply Processed Workouts
-				if(typeof workout !== 'undefined' && workout !== null) {
-					if (workout) {
-						phases[phase][classnum].workout.push(Comment(type));
-						if (workout.length) {
-							for(var b=0;b<workout.length;b++) {
-								phases[phase][classnum].workout.push(workout[b]);
-							}
-						} else {
-							phases[phase][classnum].workout.push(workout);
-						}
+						workout = StandingRoller(csv[line].Duration,
+												csv[line].Power,
+												csv[line].CadenceOff,
+												csv[line].Cadence,
+												csv[line].CadenceLow,
+												csv[line].CadenceHigh);
+						break;
+
+					case 'paceline':
+						TextEvents.addEvent('Paceline',phase,classnum);
+						TextEvents.addEvent('Base',phase,classnum);
+						TextEvents.addEvent('Base',phase,classnum);
+						TextEvents.addEvent('Front - Pulling',phase,classnum);
+						TextEvents.addEvent('Drafting',phase,classnum);
+						TextEvents.addEvent('Front - Climbing',phase,classnum);
+
+						workout = Paceline(		csv[line].Duration,
+												csv[line].Power,
+												csv[line].Cadence,
+												csv[line].PowerLow,
+												csv[line].CadenceLow,
+												csv[line].PowerHigh,
+												csv[line].CadenceHigh,
+												csv[line].PowerOff,
+												csv[line].CadenceOff,
+												csv[line].Repeat);
+						break;
+
+					case 'cooldown':
+						// We HATES the default '<RAMP>' implementation, so let's do something better.
+						// Swaps PowerHigh and Power
+						TextEvents.addEvent('Cool Down',phase,classnum);
+
+						workout = CoolDown(		csv[line].Duration,
+												csv[line].PowerHigh,
+												csv[line].PowerLow,
+												csv[line].CadenceHigh,
+												csv[line].CadenceLow,
+												csv[line].Repeat);
+						break;
+
+					case 'bigdaddies':
+						TextEvents.addEvent('BIG DADDIES!',phase,classnum);
+						TextEvents.addEvent('STAY SEATED',phase,classnum);
+						TextEvents.addEvent('No bouncing',phase,classnum);
+						TextEvents.addEvent('Max RPM from standing start',phase,classnum);
+						TextEvents.addEvent('Complete recovery Rest',phase,classnum);
+
+						workout = BigDaddies(	csv[line].Repeat,
+												csv[line].Duration,
+												csv[line].DurationOff,
+												csv[line].Power,
+												csv[line].PowerOff,
+												csv[line].Cadence,
+												csv[line].CadenceOff);
+						break;
+					case 'climbingpaceline':
+					default:
+						if (prompts.verbose) console.log('Unsupported Type: [' + type + ']');
 					}
-				} else {
-					if (prompts.verbose) console.log(phase + '-' + classnum + ': ' + type + ' was unable to be processed.');
+
+				// Apply Processed Workouts
+					if(typeof workout !== undefined && workout !== null) {
+						if (workout) {
+							phases[phase][classnum].workout.push(Comment(type));
+							if (workout.length) {
+								for(var b=0;b<workout.length;b++) {
+									phases[phase][classnum].workout.push(workout[b]);
+								}
+							} else {
+								phases[phase][classnum].workout.push(workout);
+							}
+						}
+					} else {
+						if (prompts.verbose) console.log(phase + '-' + classnum + ': ' + type + ' was unable to be processed.');
+					}
+					
 				}
-				
 			}
 		}
 	}
@@ -525,7 +514,7 @@ function TextEvent(offset, message) {
 	return { 'offset': offset, 'message': message };
 }
 
-function WorkoutBlock(type, textevents, duration, duration_off, power, power_off, power_high, cadence, cadence_off, repeat, flatroad) {
+function WorkoutBlock(type, duration, duration_off, power, power_off, power_high, cadence, cadence_off, repeat, flatroad) {
 	var workout = 				{};
 		workout[type] = [{ 'duration': duration }];
 	if (duration_off !== null)	workout[type][0]['duration_off']	= duration_off;	
@@ -536,34 +525,34 @@ function WorkoutBlock(type, textevents, duration, duration_off, power, power_off
 	if (cadence_off !== null)	workout[type][0]['cadence_off']		= cadence_off;	
 	if (repeat !== null)		workout[type][0]['repeat']			= repeat;	
 	if (flatroad !== null)		workout[type][0]['flatroad']		= flatroad;	
-	if (textevents !== null)	workout[type][0]['textevent']		= textevents;	
+	workout[type][0]['textevent']									= TextEvents.getTextEvents(phase,classnum);
 	return workout;	
 }
 
 // DEFAULT WORK BLOCKS
-function WarmUp(duration, power_low, power_high, cadence, textevents) {
-	var workout = WorkoutBlock('warmup',textevents,duration,null,power_low,null,power_high);
+function WarmUp(duration, power_low, power_high, cadence) {
+	var workout = WorkoutBlock('warmup',duration,null,power_low,null,power_high);
 	return workout;
 }
-function Ramp(duration, power_low, power_high, cadence, cadence_off, textevents) {
-	var workout = WorkoutBlock('ramp',textevents,duration,null,power_low,null,power_high,cadence,cadence_off);
+function Ramp(duration, power_low, power_high, cadence, cadence_off) {
+	var workout = WorkoutBlock('ramp',duration,null,power_low,null,power_high,cadence,cadence_off);
 	return workout;
 }
-function SteadyState(duration, power, cadence, cadence_off, textevents) {
-	var workout = WorkoutBlock('steadystate',textevents,duration,null,power,null,null,cadence,cadence_off);
+function SteadyState(duration, power, cadence, cadence_off) {
+	var workout = WorkoutBlock('steadystate',duration,null,power,null,null,cadence,cadence_off);
 	return workout;
 }
-function IntervalsT(repeat, duration, duration_off, power_on, power_off, cadence, cadence_off, textevents) {
-	var workout = WorkoutBlock('intervalst',textevents,duration,duration_off,power_on,power_off,null,cadence,cadence_off,repeat);
+function IntervalsT(repeat, duration, duration_off, power_on, power_off, cadence, cadence_off) {
+	var workout = WorkoutBlock('intervalst',duration,duration_off,power_on,power_off,null,cadence,cadence_off,repeat);
 	return workout;
 }
-function FreeRide(duration, flatroad, textevents) {
-	var workout = WorkoutBlock('freeride',textevents,duration,null,null,null,null,null,null,null,flatroad);
+function FreeRide(duration, flatroad) {
+	var workout = WorkoutBlock('freeride',duration,null,null,null,null,null,null,null,flatroad);
 	return workout;
 }
 
 // CUSTOM WORK BLOCKS
-function Progression(duration, powerA, powerB, cadenceA, cadenceB, repeat, textevents) {
+function Progression(duration, powerA, powerB, cadenceA, cadenceB, repeat) {
 	var workout = [];
 
 	if (typeof repeat === 'undefined' || repeat === null || repeat === 0) repeat = 4;
@@ -581,100 +570,88 @@ function Progression(duration, powerA, powerB, cadenceA, cadenceB, repeat, texte
 	if (cadenceA > cadenceB) cadence	= cadenceB;
 
 	for (var b=0;b<repeat;b++) {
-		workout.push(SteadyState(interval,power+(power_increment*b),cadence+(cadence_increment*b),null,textevents));
-		if (b === 0) textevents = null;
+		workout.push(SteadyState(interval,power+(power_increment*b),cadence+(cadence_increment*b),null));
 	}
 	return workout;
 }
-function SteadyBuild(duration, duration_off, power_low, power_high, cadence_low, cadence_high, textevents) {
+function SteadyBuild(duration, duration_off, power_low, power_high, cadence_low, cadence_high) {
 	var workout = Progression(duration, power_low, power_high, cadence_low, cadence_high, duration/60, null);
-	workout.splice(0,0,SteadyState(duration_off,power_low,cadence_low,null,textevents));
+	workout.splice(0,0,SteadyState(duration_off,power_low,cadence_low,null));
 	return workout;
 }
-function ProgressiveWarmup(duration, power_low, power_high, cadence_low, cadence_high, repeat, textevents) {
-	var workout = Progression(duration, power_low, power_high, cadence_low, cadence_high, repeat, textevents);
+function ProgressiveWarmup(duration, power_low, power_high, cadence_low, cadence_high, repeat) {
+	var workout = Progression(duration, power_low, power_high, cadence_low, cadence_high, repeat);
 	return workout;
 }
-function ProgressiveBuild(duration, power_low, power_high, cadence_low, cadence_high, repeat, textevents) {
-	var workout = Progression(duration, power_low, power_high, cadence_low, cadence_high, repeat, textevents);
+function ProgressiveBuild(duration, power_low, power_high, cadence_low, cadence_high, repeat) {
+	var workout = Progression(duration, power_low, power_high, cadence_low, cadence_high, repeat);
 	return workout;
 }
-function CoolDown(duration, power_low, power_high, cadence_low, cadence_high, repeat, textevents) {
-	var workout = Progression(duration, power_low, power_high, cadence_low, cadence_high, duration/60, textevents);
+function CoolDown(duration, power_low, power_high, cadence_low, cadence_high, repeat) {
+	var workout = Progression(duration, power_low, power_high, cadence_low, cadence_high, duration/60);
 	return workout;
 }
-function Rest(duration, power, textevents) {
-	var workout = SteadyState(duration,power,null,null,textevents);
+function Rest(duration, power) {
+	var workout = SteadyState(duration,power,null,null);
 	return workout;
 }
-function ActiveRest(duration, power, cadence, textevents) {
-	var workout = SteadyState(duration,power,cadence,null,textevents);
+function ActiveRest(duration, power, cadence) {
+	var workout = SteadyState(duration,power,cadence,null);
 	return workout;
 }
-function SeatedRoller(duration_off, power_off, cadence_off, duration, power, cadence_low, cadence_high, repeat, textevents) {
+function SeatedRoller(duration_off, power_off, cadence_off, duration, power, cadence_low, cadence_high, repeat) {
 	var workout = [];
 
 	if (typeof repeat === 'undefined' || repeat === null || repeat === 0 || repeat === '') repeat = 4;
 
 	// Base
-	textevents.push(TextEvent(textevents.length*5,'Base'));
-	workout.push(SteadyState(duration_off,power_off,cadence_off,null,textevents));
+	workout.push(SteadyState(duration_off,power_off,cadence_off,null));
 
 	var interval = Math.round(duration/repeat);	
 
 	for (var r=0;r<repeat;r++) {
 		// Climb
-		workout.push(SteadyState(interval/2,power,cadence_low,null,TextEvent(0,'Climb')));
+		workout.push(SteadyState(interval/2,power,cadence_low,null));
 		// Descent
-		workout.push(SteadyState(interval/2,power,cadence_high,null,TextEvent(0,'Descent')));		
+		workout.push(SteadyState(interval/2,power,cadence_high,null));		
 	}
 	return workout;
 }
-function StandingRoller(duration, power, cadence_off, cadence, cadence_low, cadence_high, textevents) {
+function StandingRoller(duration, power, cadence_off, cadence, cadence_low, cadence_high) {
 	var workout = [];
 	var interval = Math.round(duration/4);
 
 	// Base
-	workout.push(SteadyState(interval,power,cadence_off,null,textevents.slice(0,2)));
+	workout.push(SteadyState(interval,power,cadence_off,null));
 	// Approach
-	workout.push(SteadyState(interval,power,cadence,null,textevents[3]));
+	workout.push(SteadyState(interval,power,cadence,null));
 	// Climb
-	workout.push(SteadyState(interval,power,cadence_low,null,textevents[4]));
+	workout.push(SteadyState(interval,power,cadence_low,null));
 	// Descent
-	workout.push(SteadyState(interval,power,cadence_high,null,textevents[5]));
+	workout.push(SteadyState(interval,power,cadence_high,null));
 
 	return workout;
 }
-function Paceline(duration, power, cadence, power_low, cadence_low, power_high, cadence_high, power_off, cadence_off, repeat, textevents) {
+function Paceline(duration, power, cadence, power_low, cadence_low, power_high, cadence_high, power_off, cadence_off, repeat) {
 	var workout = [];
 
 	if (typeof repeat === 'undefined' || repeat === null || repeat === 0 || repeat === '') repeat = 4;
 	
 	var interval = Math.round(duration/repeat);
 
-	var textevent_intro = textevents.slice(0,2);
 	for (var r=0;r<repeat;r++) {
 		// Base
-		workout.push(SteadyState(interval,power,cadence,null,textevent_intro));
+		workout.push(SteadyState(interval,power,cadence,null));
 		// Approach
-		workout.push(SteadyState(interval,power_low,cadence_low,null,textevents[3]));
+		workout.push(SteadyState(interval,power_low,cadence_low,null));
 		// Climb
-		workout.push(SteadyState(interval,power_high,cadence_high,null,textevents[4]));
+		workout.push(SteadyState(interval,power_high,cadence_high,null));
 		// Descent
-		workout.push(SteadyState(interval,power_off,cadence_off,null,textevents[5]));
-		
-		if (r === 0) textevent_intro = textevents[2];
+		workout.push(SteadyState(interval,power_off,cadence_off,null));
 	}	
 	return workout;
 }
-function ClimbingPaceLine(duration, power, cadence, textevents) {
-	if (textevents === null) textevents = [];
-	textevents.push(TextEvent(0,'Active Rest'));
-
-	var workout = SteadyState(duration,power,cadence,null,textevents);
-	return workout;
-}
-function Climbing(duration, power, cadence, power_low, cadence_low, power_high, cadence_high, duration_off, cadence_off, repeat, textevents) {
+function Climbing(duration, power, cadence, power_low, cadence_low, power_high, cadence_high, duration_off, cadence_off, repeat) {
 	var workout = [];
 
 	if (typeof repeat === 'undefined' || repeat === null || repeat === 0 || repeat === '') repeat = 4;
@@ -690,76 +667,27 @@ function Climbing(duration, power, cadence, power_low, cadence_low, power_high, 
 		cadence_progression = cadence_high;
 	}
 
-	var textevent_intro = textevents.slice(0,2);
 	for (var r=0;r<repeat;r++) {
 		// Phase 1
-		workout.push(SteadyState(interval,power,cadence,null,textevent_intro));
+		workout.push(SteadyState(interval,power,cadence,null));
 		// Phase 2
 		if(repeat > 0) {
-			workout.push(SteadyState(interval,power_progression,cadence_progression,null,textevents[3]));
+			workout.push(SteadyState(interval,power_progression,cadence_progression,null));
 		} else {
-			workout.push(SteadyState(interval,power_low,cadence_low,null,textevents[3]));
+			workout.push(SteadyState(interval,power_low,cadence_low,null));
 		}
-		if (r === 0) textevent_intro = textevents[2];
 	}
 	
 	// Descent
-	if (duration_off !== 'undefined' || duration_off !== null) {
-		workout.push(SteadyState(duration_off,power,cadence_off,null,textevents[4]));
+	if (duration_off !== undefined || duration_off !== null) {
+		workout.push(SteadyState(duration_off,power,cadence_off,null));
 	}
 	return workout;
 }
-function BigDaddies(repeat, duration, duration_off, power_on, power_off, cadence, cadence_off, textevents) {
-	var workout = IntervalsT(repeat, duration, duration_off, power_on, power_off, cadence, cadence_off, textevents);
+function BigDaddies(repeat, duration, duration_off, power_on, power_off, cadence, cadence_off) {
+	var workout = IntervalsT(repeat, duration, duration_off, power_on, power_off, cadence, cadence_off);
 	return workout;
 }
-
-/* TODO:
-- Support new predefined Types
-	DONE: ProgressiveWarmup:	SteadyState Warmup Block
-	DONE: SeatedRoller:		SteadyState Roller block
-
-	DONE: StandingRoller:		SteadyState Roller block
-
-	DONE: PaceLine:			SteadyState Pace Line block
-
-	DONE: ClimbingPaceLine:	SteadyState Pace Line block
-
-	DONE: Rest: 			SteadyState Rest block
-	DONE: ActiveRest: 		SteadyState Active Rest block
-
-	DONE: BigDaddy:			SteadyState Max Effort block
-
-	Intro: 				TextEvent(s) of initial block instruction prompt(s).
-						- 100char max line length
-						- ';' delimited
-
-	MotivationFull: 	TextEvent(s) of motivational prompts for full block duration.
-						- 100char max line length
-						- ';' delimited
-						- Defaults
-							"XXX Seconds to go!"
-							"Doing Great!"
-							"Keep it up!"
-							"Nie and Steady"
-							"Technique!"
-
-	Motivation30: 		TextEvent(s) of motivational prompts for the last 30s of block.
-						- 100char max line length
-						- ';' delimited
-						- Defaults
-							"30 Seconds to go!"
-							"You can do it!"
-							"Keep Going!"
-							"All the way through!"
-
-	Motivation5: 		TextEvent(s) of motivational prompts for the last 30s of block.
-						- Default: "5;4;3;2;1";
-
-	Cadence:			TextEvent(s) of cadence changes in a block
-
-*/
-
 /*
 var workout = {
 	'author':		'',
