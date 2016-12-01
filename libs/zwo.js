@@ -1,4 +1,7 @@
 function ZWO() {
+	this.phases = {};
+	var workout, workouts;
+	var textevents;
 	this.workouts	= [];
 	this.workout	= {};
 		workout[type] = [{ 'duration': duration }];
@@ -14,9 +17,14 @@ function ZWO() {
 }
 var private_var = null;
 
-ZWO.prototype.method = function(item) {
-  var type=this.type;
-  return item;
+ZWO.prototype.processWorkouts = function(csv) {
+	var phases = this.phase;
+	var phase;
+	var class_num;
+	var class_name;
+	var type = this.current_type;
+
+	return true;
 }
 
 ZWO.prototype.clone = function() {
