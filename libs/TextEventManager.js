@@ -1,3 +1,5 @@
+var ErrorHandler = require('./error.js');
+
 var textevents = {};
 var event_offsets = {};
 var textevent_setnum = {};

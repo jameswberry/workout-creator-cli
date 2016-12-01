@@ -8,6 +8,13 @@ var Mustache = require('mustache');
 var CSVConverter = require('csvtojson').Converter;
 var Converter = new CSVConverter({});
 
+var ErrorHandler = require('./libs/error');
+ErrorHandler = new ErrorHandler();
+
+var TextEventManager = require('./libs/TextEventManager.js');
+TextEvents = new TextEventManager();
+
+
 // COMMAND LINE ARGUMENT OVERRIDES
 Prompt.override = Optimist.argv;
 
@@ -135,6 +142,8 @@ Prompt.get(properties, function (err, result) {
 			}
 		}
 
+		//console.log(TextEvents.dump());
+		ErrorHandler.flushErrors();
 		process.exit(0);
 	});
 });
