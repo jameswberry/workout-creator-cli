@@ -707,7 +707,8 @@ var workout = {
 		{ 'name': '' }
 	],
 	'workout':		[
-		{ 'warmup': 	[{
+		{ 'comment': 'WARMUP' }
+		{ 'warmup': [{
 			'duration':			'',
 			'power_low':		'',
 			'power_high':		'',
@@ -717,6 +718,7 @@ var workout = {
 				{ 'offset': '', 'message': '' }
 			]
 		}]},
+		{ 'comment': 'STEADYSTATE' }
 		{ 'steadystate': [{
 			'duration':			'',
 			'power':			'',
@@ -726,7 +728,8 @@ var workout = {
 				{ 'offset': '', 'message': '' }
 			]
 		}]},
-		{ 'intervals': 			[{
+		{ 'comment': 'INTERVALST' }
+		{ 'intervalst': [{
 			'repeat':			'',
 			'on_duration':		'',
 			'off_duration':		'',
@@ -738,7 +741,8 @@ var workout = {
 				{ 'offset': '', 'message': '' }
 			]
 		}]},
-		{ramp: [{
+		{ 'comment': 'RAMP' }
+		{ 'ramp': [{
 			'duration':			'',
 			'power_low':		'',
 			'power_high':		'',
@@ -748,7 +752,8 @@ var workout = {
 				{ 'offset': '', 'message': '' }
 			]
 		}]},
-		{freeride: [{
+		{ 'comment': 'FREERIDE' }
+		{ 'freeride': [{
 			'duration':		'',
 			'flatroad': 	1,
 			'textevent': [
