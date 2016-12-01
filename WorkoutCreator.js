@@ -368,7 +368,6 @@ function WorkoutProcessor(csv) {
 					case 'activerest':
 						TextEvents.addEvent('Active Rest',phase,classnum);
 					
-				case 'alternatingclimb':
 						workout = ActiveRest(	csv[line].Duration,
 												csv[line].Power,
 												csv[line].Cadence);
@@ -564,7 +563,7 @@ function FreeRide(duration, flatroad) {
 function Progression(duration, powerA, powerB, cadenceA, cadenceB, repeat) {
 	var workout = [];
 
-	if (typeof repeat === 'undefined' || repeat === null || repeat === 0) repeat = 4;
+	if (typeof repeat === undefined || repeat === null || repeat === 0) repeat = 4;
 	if (repeat === 1) repeat = 2;
 
 	
@@ -611,7 +610,7 @@ function ActiveRest(duration, power, cadence) {
 function SeatedRoller(duration_off, power_off, cadence_off, duration, power, cadence_low, cadence_high, repeat) {
 	var workout = [];
 
-	if (typeof repeat === 'undefined' || repeat === null || repeat === 0 || repeat === '') repeat = 4;
+	if (typeof repeat === undefined || repeat === null || repeat === 0 || repeat === '') repeat = 4;
 
 	// Base
 	workout.push(SteadyState(duration_off,power_off,cadence_off,null));
@@ -644,7 +643,7 @@ function StandingRoller(duration, power, cadence_off, cadence, cadence_low, cade
 function Paceline(duration, power, cadence, power_low, cadence_low, power_high, cadence_high, power_off, cadence_off, repeat) {
 	var workout = [];
 
-	if (typeof repeat === 'undefined' || repeat === null || repeat === 0 || repeat === '') repeat = 4;
+	if (typeof repeat === undefined || repeat === null || repeat === 0 || repeat === '') repeat = 4;
 	
 	var interval = Math.round(duration/repeat);
 
@@ -663,16 +662,16 @@ function Paceline(duration, power, cadence, power_low, cadence_low, power_high, 
 function Climbing(duration, power, cadence, power_low, cadence_low, power_high, cadence_high, duration_off, cadence_off, repeat) {
 	var workout = [];
 
-	if (typeof repeat === 'undefined' || repeat === null || repeat === 0 || repeat === '') repeat = 4;
+	if (typeof repeat === undefined || repeat === null || repeat === 0 || repeat === '') repeat = 4;
 	var interval = Math.round(duration/repeat)/2;
 	
  	var power_progression = power_low;
-	if (power_high !== 'undefined' || power_high !== null) {
+	if (power_high !== undefined || power_high !== null) {
 		power_progression = power_high;
 	}
 
  	var cadence_progression	= cadence_low;
-	if (cadence_high !== 'undefined' || cadence_high !== null) {
+	if (cadence_high !== undefined || cadence_high !== null) {
 		cadence_progression = cadence_high;
 	}
 
