@@ -32,6 +32,7 @@ function TextEvent(offset, message) {
 
 function getId(phase, classnum, setnum) {
 	return phase+':'+classnum+':'+setnum;
+	if (typeof setnum === 'undefined' || setnum === null) setnum = 0;
 }
 function getOffsetId(phase, classnum, setnum) {
 	return phase+':'+classnum+':'+setnum+':offsets';
@@ -62,22 +63,21 @@ TextEventManager.prototype.getTextEvents = function(phase, classnum, setnum) {
  * Increment the associated set number being tracked.
  */
 TextEventManager.prototype.incrementSetNum = function(phase, classnum) {
-	if (textevent_setnum[phase][classnum] === undefined) textevent_setnum[phase][classnum] = -1;
-	return textevent_setnum[phase][classnum]++;
+	var id = getId(phase,classnum);
+	if (textevent_setnum[id] === undefined) textevent_setnum[id] = -1;
+	return textevent_setnum[id]++;
 }
 /***
  * Get the associated set number being tracked.
  */
 TextEventManager.prototype.getSetNum = function(phase, classnum) {
-	return textevent_setnum[phase][classnum];
+	return textevent_setnum[getId(phase,classnum)];
 }
 /***
  * Reset the current set number being tracked.
  */
 TextEventManager.prototype.resetSetNum = function(phase, classnum) {
-	if (typeof textevent_setnum[phase] === 'undefined') textevent_setnum[phase] = {};
-	if (typeof textevent_setnum[phase][classnum] === 'undefined') textevent_setnum[phase][classnum] = null;
-	return textevent_setnum[phase][classnum] = 0;
+	return textevent_setnum[getId(phase,classnum)] = 0;
 }
 
 /***
