@@ -271,6 +271,7 @@ function WorkoutProcessor(csv) {
 					case 'textevent':
 						// NOTE: Should never get here because we have already skipped this processing for TextEvents.
 						workout = false;
+						TextEvents.deleteSet(phase,classnum);
 						break;
 
 				// DEFAULT WORKOUT BLOCKS
