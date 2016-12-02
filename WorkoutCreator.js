@@ -158,10 +158,10 @@ var classnum;
  * csv - csv-to-json conversaion data structure.
  */
 function WorkoutProcessor(csv) {
-	var phases		= {};
+	var phases = {};
 	var classname;
 	var type;
-	var workout, workouts;
+	var workout_id, workout, workouts;
 
 	for(line in csv) {
 		// Convert line to an integer for indexing the csv array later. (searching for adjacent textevents)
@@ -170,10 +170,6 @@ function WorkoutProcessor(csv) {
 		if (csv[line].Phase != '') {
 			phase = csv[line].Phase;
 
-			// Initialize Phase
-				phases[phase] = Array();
-			}
-		
 			if (csv[line].Class != '' ) {
 				type = csv[line].Type.toLowerCase();
 
@@ -184,12 +180,15 @@ function WorkoutProcessor(csv) {
 					if (csv[line].Class-1 != classnum) TextEvents.resetSetNum(phase,csv[line].Class-1);
 				
 					classnum = csv[line].Class-1;
+					
+					workout_id = getWorkoutId(phase,classnum);
 
 					// Increment Class Set Number for sets
 					 TextEvents.incrementSetNum(phase,classnum);
 			
 					// Initialize Class Object
-						phases[phase][classnum] = {
+					if (typeof  phases[workout_id] === 'undefined' ) {
+						phases[workout_id] = {
 							'author'		: '',
 							'name'			: '',
 							'description'	: '',
@@ -221,7 +220,7 @@ function WorkoutProcessor(csv) {
 
 				// WORKOUT DETAILS
 					case 'author':
-						phases[phase][classnum].author = csv[line].Value;
+						phases[workout_id].author = csv[line].Value;
 						workout = false;
 						TextEvents.deleteSet(phase,classnum);
 						break;
@@ -232,27 +231,28 @@ function WorkoutProcessor(csv) {
 						} else { 
 							classname = csv[line].Class;
 						}
-						phases[phase][classnum].name = csv[line].Phase+' #'+classname+': '+csv[line].Value;
+						phases[workout_id].name = csv[line].Phase+' #'+classname+': '+csv[line].Value;
 						workout = false;
 						TextEvents.deleteSet(phase,classnum);
 						break;
 
 					case 'description':
-						phases[phase][classnum].description = csv[line].Value;
+						phases[workout_id].description = csv[line].Value;
 						workout = false;
 						TextEvents.deleteSet(phase,classnum);
 						break;
 
 					case 'sport':
-						phases[phase][classnum].sport = csv[line].Value.toLowerCase();
+						phases[workout_id].sport = csv[line].Value.toLowerCase();
 						workout = false;
 						TextEvents.deleteSet(phase,classnum);
 						break;
 
 					case 'tag':
 						// Initialize Tags
-							phases[phase][classnum].tags = true;
-							phases[phase][classnum].tag = [];
+						if (typeof phases[workout_id].tag	=== 'undefined') {
+							phases[workout_id].tags = true;
+							phases[workout_id].tag = [];
 						}
 						if (csv[line].Value.toLowerCase() == 'recovery' ||
 							csv[line].Value.toLowerCase() == 'intervals' ||
@@ -260,7 +260,7 @@ function WorkoutProcessor(csv) {
 							csv[line].Value.toLowerCase() == 'tt') {
 								csv[line].Value = csv[line].Value.toUpperCase();
 						}
-						phases[phase][classnum].tag.push({ 'name': csv[line].Value });
+						phases[workout_id].tag.push({ 'name': csv[line].Value });
 						workout = false;
 						TextEvents.deleteSet(phase,classnum);
 						break;
@@ -487,13 +487,13 @@ function WorkoutProcessor(csv) {
 				// Apply Processed Workouts
 					if(typeof workout !== 'undefined' && workout !== null) {
 						if (workout) {
-							phases[phase][classnum].workout.push(Comment(type));
+							phases[workout_id].workout.push(Comment(type));
 							if (workout.length) {
 								for(var b=0;b<workout.length;b++) {
-									phases[phase][classnum].workout.push(workout[b]);
+									phases[workout_id].workout.push(workout[b]);
 								}
 							} else {
-								phases[phase][classnum].workout.push(workout);
+								phases[workout_id].workout.push(workout);
 							}
 						}
 					} else {
@@ -507,9 +507,8 @@ function WorkoutProcessor(csv) {
 	return phases;
 }
 
-// BASE DATA STRUCTURES
-function Comment(message) {
-	return { 'comment': message.toUpperCase() };
+function getWorkoutId(phase, classnum) {
+	return phase+':'+classnum;
 }
 
 function TextEvent(offset, message) {
