@@ -514,8 +514,9 @@ function getWorkoutId(phase, classnum) {
 	return phase+':'+classnum;
 }
 
-function TextEvent(offset, message) {
-	return { 'offset': offset, 'message': message };
+// BASE WORKOUT DATA STRUCTURES
+function Comment(message) {
+	return { 'comment': message.toUpperCase() };
 }
 
 function WorkoutBlock(type, duration, duration_off, power, power_off, power_high, cadence, cadence_off, repeat, flatroad) {
