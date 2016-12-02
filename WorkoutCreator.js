@@ -532,6 +532,10 @@ function WorkoutBlock(type, duration, duration_off, power, power_off, power_high
 	if (repeat !== null)		workout[type][0]['repeat']			= repeat;	
 	if (flatroad !== null)		workout[type][0]['flatroad']		= flatroad;	
 	workout[type][0]['textevent']									= TextEvents.getTextEvents(phase,classnum);
+
+	// Increment to differentiate workout block sets
+	TextEvents.incrementSetNum(phase,classnum);
+
 	return workout;	
 }
 
