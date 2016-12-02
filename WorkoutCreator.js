@@ -164,14 +164,13 @@ function WorkoutProcessor(csv) {
 	var workout, workouts;
 
 	for(line in csv) {
-		// Convert line to an integer for indexing the csv array later. (searching for textevents)
+		// Convert line to an integer for indexing the csv array later. (searching for adjacent textevents)
 		line = parseInt(line);
 
 		if (csv[line].Phase != '') {
 			phase = csv[line].Phase;
 
 			// Initialize Phase
-			if (phases[phase] === undefined) {
 				phases[phase] = Array();
 			}
 		
@@ -190,7 +189,6 @@ function WorkoutProcessor(csv) {
 					 TextEvents.incrementSetNum(phase,classnum);
 			
 					// Initialize Class Object
-					if ( phases[phase][classnum] === undefined ) {
 						phases[phase][classnum] = {
 							'author'		: '',
 							'name'			: '',
@@ -202,14 +200,11 @@ function WorkoutProcessor(csv) {
 					}
 
 					// Process Block Text Event
-					if ( csv[line].Value !== undefined && csv[line].Value !== '' ) {
 						TextEvents.addEvent(csv[line].Value, phase,classnum);
 					}
 				
 					// Process additional Block Text Events
-					if ( csv[line+1] !== undefined ) {
 						for ( var te=1; te<(csv.length-line); te++ ) { // Only search to the end of the csv array.
-							if ( csv[line+te] === undefined ) {
 								break;
 							} else if( csv[line+te].Type.toLowerCase() === 'textevent' ) {
 								TextEvents.addEvent(csv[line+te].Value, phase,classnum);
@@ -256,7 +251,6 @@ function WorkoutProcessor(csv) {
 
 					case 'tag':
 						// Initialize Tags
-						if (phases[phase][classnum].tag	=== undefined) {
 							phases[phase][classnum].tags = true;
 							phases[phase][classnum].tag = [];
 						}
@@ -491,7 +485,7 @@ function WorkoutProcessor(csv) {
 					}
 
 				// Apply Processed Workouts
-					if(typeof workout !== undefined && workout !== null) {
+					if(typeof workout !== 'undefined' && workout !== null) {
 						if (workout) {
 							phases[phase][classnum].workout.push(Comment(type));
 							if (workout.length) {
@@ -563,7 +557,7 @@ function FreeRide(duration, flatroad) {
 function Progression(duration, powerA, powerB, cadenceA, cadenceB, repeat) {
 	var workout = [];
 
-	if (typeof repeat === undefined || repeat === null || repeat === 0) repeat = 4;
+	if (typeof repeat === 'undefined' || repeat === null || repeat === 0) repeat = 4;
 	if (repeat === 1) repeat = 2;
 
 	
@@ -610,7 +604,7 @@ function ActiveRest(duration, power, cadence) {
 function SeatedRoller(duration_off, power_off, cadence_off, duration, power, cadence_low, cadence_high, repeat) {
 	var workout = [];
 
-	if (typeof repeat === undefined || repeat === null || repeat === 0 || repeat === '') repeat = 4;
+	if (typeof repeat === 'undefined' || repeat === null || repeat === 0 || repeat === '') repeat = 4;
 
 	// Base
 	workout.push(SteadyState(duration_off,power_off,cadence_off,null));
@@ -643,7 +637,7 @@ function StandingRoller(duration, power, cadence_off, cadence, cadence_low, cade
 function Paceline(duration, power, cadence, power_low, cadence_low, power_high, cadence_high, power_off, cadence_off, repeat) {
 	var workout = [];
 
-	if (typeof repeat === undefined || repeat === null || repeat === 0 || repeat === '') repeat = 4;
+	if (typeof repeat === 'undefined' || repeat === null || repeat === 0 || repeat === '') repeat = 4;
 	
 	var interval = Math.round(duration/repeat);
 
@@ -662,16 +656,14 @@ function Paceline(duration, power, cadence, power_low, cadence_low, power_high, 
 function Climbing(duration, power, cadence, power_low, cadence_low, power_high, cadence_high, duration_off, cadence_off, repeat) {
 	var workout = [];
 
-	if (typeof repeat === undefined || repeat === null || repeat === 0 || repeat === '') repeat = 4;
+	if (typeof repeat === 'undefined' || repeat === null || repeat === 0 || repeat === '') repeat = 4;
 	var interval = Math.round(duration/repeat)/2;
 	
  	var power_progression = power_low;
-	if (power_high !== undefined || power_high !== null) {
 		power_progression = power_high;
 	}
 
  	var cadence_progression	= cadence_low;
-	if (cadence_high !== undefined || cadence_high !== null) {
 		cadence_progression = cadence_high;
 	}
 
@@ -687,7 +679,6 @@ function Climbing(duration, power, cadence, power_low, cadence_low, power_high, 
 	}
 	
 	// Descent
-	if (duration_off !== undefined || duration_off !== null) {
 		workout.push(SteadyState(duration_off,power,cadence_off,null));
 	}
 	return workout;
