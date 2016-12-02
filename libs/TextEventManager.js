@@ -41,7 +41,7 @@ function getOffsetIdById(id) {
 }
 
 /***
- * Increment the associated set number being tracked.
+ * Return the TextEvent data structure.
  */
 TextEventManager.prototype.getTextEvents = function(phase, classnum, setnum) {
 	if (typeof setnum === 'undefined' || setnum === null) setnum = this.getSetNum(phase,classnum);
@@ -117,7 +117,7 @@ function getEventById(id) {
 }
 
 /***
- * Single pass processor for updating incremental offset values to existing events.
+ * Single pass processor for updating incremental offset values of existing events.
  */
 TextEventManager.prototype.updateOffsets = function() {
 	var events = textevents;
