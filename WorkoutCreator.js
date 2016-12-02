@@ -200,10 +200,13 @@ function WorkoutProcessor(csv) {
 
 					// Process Block Text Event
 						TextEvents.addEvent(csv[line].Value, phase,classnum);
+					if (typeof  csv[line].Value !== 'undefined' && csv[line].Value !== '') {
 					}
 				
 					// Process additional Block Text Events
+					if (typeof csv[line+1] !== 'undefined') {
 						for ( var te=1; te<(csv.length-line); te++ ) { // Only search to the end of the csv array.
+							if (typeof csv[line+te] === 'undefined') {
 								break;
 							} else if( csv[line+te].Type.toLowerCase() === 'textevent' ) {
 								TextEvents.addEvent(csv[line+te].Value, phase,classnum);
@@ -659,10 +662,12 @@ function Climbing(duration, power, cadence, power_low, cadence_low, power_high, 
 	var interval = Math.round(duration/repeat)/2;
 	
  	var power_progression = power_low;
+	if (typeof power_high !== 'undefined' || power_high !== null) {
 		power_progression = power_high;
 	}
 
  	var cadence_progression	= cadence_low;
+	if (typeof cadence_high !== 'undefined' || cadence_high !== null) {
 		cadence_progression = cadence_high;
 	}
 
@@ -678,6 +683,7 @@ function Climbing(duration, power, cadence, power_low, cadence_low, power_high, 
 	}
 	
 	// Descent
+	if (typeof duration_off !== 'undefined' || duration_off !== null) {
 		workout.push(SteadyState(duration_off,power,cadence_off,null));
 	}
 	return workout;
