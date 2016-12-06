@@ -100,13 +100,16 @@ Supports all of the default ZWO blocks, as well as custom workout block options.
 - **BigDaddies**
 
 ## TextEvent
-Text events are displayed on the Zwift screen, triggered at the beginning of each workout block.  They can be added in two ways:
+Text events are displayed on the Zwift screen, triggered at the beginning of each workout block.  They can be added in three ways:
 
 1. _**Value**_ 
 	- Associating a _Value_ with a _Phase:Class:Type_ workout block in the CSV will automatically add a **TextEvent** at time 0 with that value.
 1. _**Type**_
-	- Adding a **TextEvent** block will automatically apply the **TextEvent* to the previous non-textevent block at time _Offset_.
+	- Adding a **TextEvent** block will automatically apply the **TextEvent** to the previous non-textevent block at time _Offset_.
+1. _**Defaults**_
+	- Many Custom Blocks add predefined **TextEvents**.
+	- If you choose to add your own, you will want to confirm that your _Offset_ values take these into consideration.
 
 **TextEvents** are displayed in Zwift for 10 seconds, so it's recommended that _Offset_ values are in multiples of 5 or 10.
 
-Also note that many Custom Blocks add predefined **TextEvents**, so you will want to confirm that your _Offset_ values take these into consideration.
+**BUG:** Also note that currently there is a bug with _OffSet_ values being overridden with auto-calculated offsets in 5s increments.
