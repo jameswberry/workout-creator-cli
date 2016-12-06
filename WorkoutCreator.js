@@ -121,32 +121,38 @@ Prompt.get(properties, function (err, result) {
 		var output = '';
 		var output_file = '';
 		var output_filename = '';
+
 		var views = WorkoutProcessor(result);
 		if (prompts.verbose) console.log('Views Complete');
 
-		for(view in views) {
-		
-			for(var cn=0; cn<views[view].length; cn++) {
-				output_filename = view+'-';
-				if(cn+1<10) {
-					output_filename += '0';
-				}
-				output_filename += (cn+1);
-				output_file = output_file_prefix+output_filename+output_file_suffix;
-				if (prompts.verbose) console.log('Writing File: '+output_file);
-
-				output = Mustache.render(template, views[view][cn]);
-
-				require('fs').writeFileSync(output_file, output);
-				if (prompts.verbose) console.log('File Saved');
+		var cn, lastphase;
+		for(var view in views) {
+			if (view.split(':')[0] !== lastphase) cn = 0;
+			lastphase = view.split(':')[0];
+			
+			output_filename = view.split(':')[0]+'-';
+			if(cn+1<10) {
+				output_filename += '0';
 			}
+			output_filename += (cn+1);
+
+			output_file = output_file_prefix+output_filename+output_file_suffix;
+			if (prompts.verbose) console.log('Writing File: '+output_file);
+
+			output = Mustache.render(template, views[view]);
+
+			require('fs').writeFileSync(output_file, output);
+			if (prompts.verbose) console.log('File Saved');
+			cn++;
 		}
 
-		//console.log(TextEvents.dump());
-		ErrorHandler.flushErrors();
+		if (prompts.debug) console.log(TextEvents.dump());
+		if (prompts.debug) ErrorHandler.flushErrors();
 		process.exit(0);
 	});
 });
+
+// TODO: Would like to move these into TextEvents library once it's working.
 
 // Phase is required as a global for TextEvents
 var phase;
@@ -154,12 +160,16 @@ var phase;
 // Classnum is required as a global for TextEvents
 var classnum;
 
+// Blocknum is required as a global for TextEvents
+var blocknum = -1; // So we can increment it at the beginning of the block loop.
+
 /**
  * csv - csv-to-json conversaion data structure.
  */
 function WorkoutProcessor(csv) {
 	var phases = {};
 	var classname;
+	var lastclassnum
 	var type;
 	var workout_id, workout, workouts;
 
@@ -171,20 +181,22 @@ function WorkoutProcessor(csv) {
 			phase = csv[line].Phase;
 
 			if (csv[line].Class != '' ) {
-				type = csv[line].Type.toLowerCase();
+				lastclassnum = classnum; // Store for Blocknum comparitor.
+				classnum	 = csv[line].Class-1;
+				type		 = csv[line].Type.toLowerCase();
 
 				// Skip TextEvents since they are already processed as part of blocks.
 				if (type !== 'textevent') {
-
-					// Reset Class Set Number when moving between Classes.
-					if (csv[line].Class-1 != classnum) TextEvents.resetSetNum(phase,csv[line].Class-1);
-				
-					classnum = csv[line].Class-1;
+					
+					// Increment the Block Number
+					if (classnum === lastclassnum) {
+						blocknum++;
+					} else {
+						// Reset Block Number when moving between Classes.
+						blocknum = 0; 
+					}
 					
 					workout_id = getWorkoutId(phase,classnum);
-
-					// Increment Class Set Number for sets
-					 TextEvents.incrementSetNum(phase,classnum);
 			
 					// Initialize Class Object
 					if (typeof  phases[workout_id] === 'undefined' ) {
@@ -194,13 +206,13 @@ function WorkoutProcessor(csv) {
 							'description'	: '',
 							'sport'			: '',
 							'tags'			: false,
-							'workout'		: Array()
+							'workout'		: []
 						};
 					}
 
 					// Process Block Text Event
-						TextEvents.addEvent(csv[line].Value, phase,classnum);
 					if (typeof  csv[line].Value !== 'undefined' && csv[line].Value !== '') {
+						TextEvents.addEvent(0, csv[line].Value, phase, classnum, blocknum);
 					}
 				
 					// Process additional Block Text Events
@@ -209,7 +221,7 @@ function WorkoutProcessor(csv) {
 							if (typeof csv[line+te] === 'undefined') {
 								break;
 							} else if( csv[line+te].Type.toLowerCase() === 'textevent' ) {
-								TextEvents.addEvent(csv[line+te].Value, phase,classnum);
+								TextEvents.addEvent(0, csv[line+te].Value, phase, classnum, blocknum);
 							} else {
 								break;
 							}
@@ -225,7 +237,7 @@ function WorkoutProcessor(csv) {
 					case 'author':
 						phases[workout_id].author = csv[line].Value;
 						workout = false;
-						TextEvents.deleteSet(phase,classnum);
+						TextEvents.deleteBlock(phase, classnum, blocknum);
 						break;
 
 					case 'name':
@@ -236,19 +248,19 @@ function WorkoutProcessor(csv) {
 						}
 						phases[workout_id].name = csv[line].Phase+' #'+classname+': '+csv[line].Value;
 						workout = false;
-						TextEvents.deleteSet(phase,classnum);
+						TextEvents.deleteBlock(phase, classnum, blocknum);
 						break;
 
 					case 'description':
 						phases[workout_id].description = csv[line].Value;
 						workout = false;
-						TextEvents.deleteSet(phase,classnum);
+						TextEvents.deleteBlock(phase, classnum, blocknum);
 						break;
 
 					case 'sport':
 						phases[workout_id].sport = csv[line].Value.toLowerCase();
 						workout = false;
-						TextEvents.deleteSet(phase,classnum);
+						TextEvents.deleteBlock(phase, classnum, blocknum);
 						break;
 
 					case 'tag':
@@ -265,56 +277,71 @@ function WorkoutProcessor(csv) {
 						}
 						phases[workout_id].tag.push({ 'name': csv[line].Value });
 						workout = false;
-						TextEvents.deleteSet(phase,classnum);
+						TextEvents.deleteBlock(phase, classnum, blocknum);
 						break;
 
 					case 'textevent':
 						// NOTE: Should never get here because we have already skipped this processing for TextEvents.
 						workout = false;
-						TextEvents.deleteSet(phase,classnum);
+						TextEvents.deleteBlock(phase, classnum, blocknum);
 						break;
 
 				// DEFAULT WORKOUT BLOCKS
 					case 'warmup':
+						TextEvents.addEvent(0, 'Warm Up', phase, classnum, blocknum);
+						
 						workout = WarmUp(		csv[line].Duration,
 										 		csv[line].Power,
 										 		csv[line].PowerHigh,
-										 		csv[line].Cadence);
+										 		csv[line].Cadence,
+												0);
 						break;
 
 					case 'ramp':
+						TextEvents.addEvent(0, 'Ramp', phase, classnum, blocknum);
+					
 						workout = Ramp(			csv[line].Duration,
 												csv[line].Power,
 												csv[line].PowerHigh,
 												csv[line].Cadence,
-												csv[line].CadenceOff);
+												csv[line].CadenceOff,
+												0);
 						break;
 
 					case 'steadystate':
+						TextEvents.addEvent(0, 'Steady State', phase, classnum, blocknum);
+					
 						workout = SteadyState(	csv[line].Duration,
 												csv[line].Power,
 												csv[line].Cadence,
-												csv[line].CadenceOff);
+												csv[line].CadenceOff,
+												0);
 						break;
 
 					case 'intervalst':
+						TextEvents.addEvent(0, 'Interval', phase, classnum, blocknum);
+						
 						workout = IntervalsT(	csv[line].Repeat,
 												csv[line].Duration,
 												csv[line].DurationOff,
 												csv[line].Power,
 												csv[line].PowerOff,
 												csv[line].Cadence,
-												csv[line].CadenceOff);
+												csv[line].CadenceOff,
+												0);
 						break;
 
 					case 'freeride':
+						TextEvents.addEvent(0, 'Free Ride', phase, classnum, blocknum);
+						
 						workout = FreeRide(		csv[line].Duration,
-												1);
+												1,
+												0);
 						break;
 				
 				// CUSTOM WORKOUT BLOCKS
 					case 'progressivewarmup':
-						TextEvents.addEvent('Progressive Warmup',phase,classnum);
+						TextEvents.addEvent(0, 'Progressive Warmup', phase, classnum, blocknum);
 					
 						workout = ProgressiveWarmup(csv[line].Duration,
 												csv[line].PowerLow,
@@ -325,7 +352,7 @@ function WorkoutProcessor(csv) {
 						break;
 
 					case 'steadybuild':
-						TextEvents.addEvent('Steady Build',phase,classnum);
+						TextEvents.addEvent(0, 'Steady Build', phase, classnum, blocknum);
 						
 						workout = SteadyBuild(	csv[line].Duration,
 												csv[line].DurationOff,
@@ -336,8 +363,8 @@ function WorkoutProcessor(csv) {
 						break;
 
 					case 'progressivebuild':
-						TextEvents.addEvent('Progressive Build',phase,classnum);
-						TextEvents.addEvent('Build power and cadence together',phase,classnum);
+						TextEvents.addEvent(0, 'Progressive Build', phase, classnum, blocknum);
+						TextEvents.addEvent(0, 'Build power and cadence together', phase, classnum, blocknum);
 					
 						workout = ProgressiveBuild(csv[line].Duration,
 												csv[line].PowerLow,
@@ -348,23 +375,26 @@ function WorkoutProcessor(csv) {
 						break;
 
 					case 'progression':
+						TextEvents.addEvent(0, 'Progressive Build', phase, classnum, blocknum);
+						
 						workout = Progression(	csv[line].Duration,
 												csv[line].PowerLow,
 												csv[line].PowerHigh,
 												csv[line].CadenceLow,
 												csv[line].CadenceHigh,
-												csv[line].Repeat);
+												csv[line].Repeat,
+												0);
 						break;
 
 					case 'rest':
-						TextEvents.addEvent('Full Recovery',phase,classnum);
+						TextEvents.addEvent(0, 'Full Recovery', phase, classnum, blocknum);
 					
 						workout = Rest(			csv[line].Duration,
 												csv[line].Power);
 						break;
 
 					case 'activerest':
-						TextEvents.addEvent('Active Rest',phase,classnum);
+						TextEvents.addEvent(0, 'Active Rest', phase, classnum, blocknum);
 					
 						workout = ActiveRest(	csv[line].Duration,
 												csv[line].Power,
@@ -372,11 +402,11 @@ function WorkoutProcessor(csv) {
 						break;
 					
 					case 'alternatingclimb':
-						TextEvents.addEvent('Alternate Seated Climbing with Standing',phase,classnum);
-						TextEvents.addEvent('Climb (Seated)',phase,classnum);
-						TextEvents.addEvent('Climb (Seated)',phase,classnum);
-						TextEvents.addEvent('Stand',phase,classnum);
-						TextEvents.addEvent('Descent!',phase,classnum);
+						TextEvents.addEvent(0, 'Alternate Seated Climbing with Standing', phase, classnum, blocknum);
+						TextEvents.addEvent(0, 'Climb (Seated)', phase, classnum, blocknum);
+						TextEvents.addEvent(1, 'Climb (Seated)', phase, classnum, blocknum);
+						TextEvents.addEvent(2, 'Stand', phase, classnum, blocknum);
+						TextEvents.addEvent(3, 'Descent!', phase, classnum, blocknum);
 
 						workout = Climbing(		csv[line].Duration,
 							 					csv[line].Power,
@@ -391,6 +421,11 @@ function WorkoutProcessor(csv) {
 						break;
 
 					case 'climbing':
+						TextEvents.addEvent(0, 'Climbing', phase, classnum, blocknum);
+						TextEvents.addEvent(0, 'Base', phase, classnum, blocknum);
+						TextEvents.addEvent(1, 'Approach', phase, classnum, blocknum);
+						TextEvents.addEvent(2, 'Climbing out of the saddle', phase, classnum, blocknum);
+						TextEvents.addEvent(3, 'Descent', phase, classnum, blocknum);
 						workout = Climbing(		csv[line].Duration,
 							 					csv[line].Power,
 												csv[line].Cadence,
@@ -404,10 +439,10 @@ function WorkoutProcessor(csv) {
 						break;
 
 					case 'seatedroller':
-						TextEvents.addEvent('Seated Roller',phase,classnum);
-						TextEvents.addEvent('Mix RPM from smooth seated rollers',phase,classnum);
-						TextEvents.addEvent('Tension on chain',phase,classnum);
-						TextEvents.addEvent('Smooth transitions from climb to descend',phase,classnum);
+						TextEvents.addEvent(0, 'Seated Roller', phase, classnum, blocknum);
+						TextEvents.addEvent(0, 'Mix RPM from smooth seated rollers', phase, classnum, blocknum);
+						TextEvents.addEvent(0, 'Tension on chain', phase, classnum, blocknum);
+						TextEvents.addEvent(0, 'Smooth transitions from climb to descend', phase, classnum, blocknum);
 
 						workout = SeatedRoller( csv[line].DurationOff,
 												csv[line].PowerOff,
@@ -420,12 +455,11 @@ function WorkoutProcessor(csv) {
 						break;
 
 					case 'standingroller':
-						TextEvents.addEvent('Standing Roller',phase,classnum);
-						TextEvents.addEvent('Base',phase,classnum);
-						TextEvents.addEvent('Base',phase,classnum);
-						TextEvents.addEvent('Approach',phase,classnum);
-						TextEvents.addEvent('Climbing out of the saddle',phase,classnum);
-						TextEvents.addEvent('Descent',phase,classnum);
+						TextEvents.addEvent(0, 'Standing Roller', phase, classnum, blocknum);
+						TextEvents.addEvent(0, 'Base', phase, classnum, blocknum);
+						TextEvents.addEvent(1, 'Approach', phase, classnum, blocknum);
+						TextEvents.addEvent(2, 'Climbing out of the saddle', phase, classnum, blocknum);
+						TextEvents.addEvent(3, 'Descent', phase, classnum, blocknum);
 
 						workout = StandingRoller(csv[line].Duration,
 												csv[line].Power,
@@ -436,12 +470,12 @@ function WorkoutProcessor(csv) {
 						break;
 
 					case 'paceline':
-						TextEvents.addEvent('Paceline',phase,classnum);
-						TextEvents.addEvent('Base',phase,classnum);
-						TextEvents.addEvent('Base',phase,classnum);
-						TextEvents.addEvent('Front - Pulling',phase,classnum);
-						TextEvents.addEvent('Drafting',phase,classnum);
-						TextEvents.addEvent('Front - Climbing',phase,classnum);
+						TextEvents.addEvent(0, 'Paceline', phase, classnum, blocknum);
+						TextEvents.addEvent(0, 'Base', phase, classnum, blocknum);
+						TextEvents.addEvent(1, 'Base', phase, classnum, blocknum);
+						TextEvents.addEvent(2, 'Front - Pulling', phase, classnum, blocknum);
+						TextEvents.addEvent(3, 'Drafting', phase, classnum, blocknum);
+						TextEvents.addEvent(4, 'Front - Climbing', phase, classnum, blocknum);
 
 						workout = Paceline(		csv[line].Duration,
 												csv[line].Power,
@@ -458,7 +492,7 @@ function WorkoutProcessor(csv) {
 					case 'cooldown':
 						// We HATES the default '<RAMP>' implementation, so let's do something better.
 						// Swaps PowerHigh and Power
-						TextEvents.addEvent('Cool Down',phase,classnum);
+						TextEvents.addEvent(0, 'Cool Down', phase, classnum, blocknum);
 
 						workout = CoolDown(		csv[line].Duration,
 												csv[line].PowerHigh,
@@ -469,11 +503,11 @@ function WorkoutProcessor(csv) {
 						break;
 
 					case 'bigdaddies':
-						TextEvents.addEvent('BIG DADDIES!',phase,classnum);
-						TextEvents.addEvent('STAY SEATED',phase,classnum);
-						TextEvents.addEvent('No bouncing',phase,classnum);
-						TextEvents.addEvent('Max RPM from standing start',phase,classnum);
-						TextEvents.addEvent('Complete recovery Rest',phase,classnum);
+						TextEvents.addEvent(0, 'BIG DADDIES!', phase, classnum, blocknum);
+						TextEvents.addEvent(0, 'STAY SEATED', phase, classnum, blocknum);
+						TextEvents.addEvent(0, 'No bouncing', phase, classnum, blocknum);
+						TextEvents.addEvent(0, 'Max RPM from standing start', phase, classnum, blocknum);
+						TextEvents.addEvent(0, 'Complete recovery Rest', phase, classnum, blocknum);
 
 						workout = BigDaddies(	csv[line].Repeat,
 												csv[line].Duration,
@@ -501,7 +535,7 @@ function WorkoutProcessor(csv) {
 							}
 						}
 					} else {
-						if (prompts.verbose) console.log(phase + '-' + classnum + ': ' + type + ' was unable to be processed.');
+						if (prompts.verbose) console.log(phase+'-'+classnum+': '+type+' was unable to be processed.');
 					}
 					
 				}
@@ -520,9 +554,10 @@ function Comment(message) {
 	return { 'comment': message.toUpperCase() };
 }
 
-function WorkoutBlock(type, duration, duration_off, power, power_off, power_high, cadence, cadence_off, repeat, flatroad) {
+function WorkoutBlock(type, duration, duration_off, power, power_off, power_high, cadence, cadence_off, repeat, flatroad, index) {
 	var workout = 				{};
 		workout[type] = [{ 'duration': duration }];
+
 	if (duration_off !== null)	workout[type][0]['duration_off']	= duration_off;	
 	if (power !== null)			workout[type][0]['power']			= power;	
 	if (power_off !== null)		workout[type][0]['power_off']		= power_off;	
@@ -531,38 +566,35 @@ function WorkoutBlock(type, duration, duration_off, power, power_off, power_high
 	if (cadence_off !== null)	workout[type][0]['cadence_off']		= cadence_off;	
 	if (repeat !== null)		workout[type][0]['repeat']			= repeat;	
 	if (flatroad !== null)		workout[type][0]['flatroad']		= flatroad;	
-	workout[type][0]['textevent']									= TextEvents.getTextEvents(phase,classnum);
-
-	// Increment to differentiate workout block sets
-	TextEvents.incrementSetNum(phase,classnum);
+	workout[type][0]['textevent']									= TextEvents.getTextEvents(index, phase, classnum, blocknum);
 
 	return workout;	
 }
 
 // DEFAULT WORK BLOCKS
-function WarmUp(duration, power_low, power_high, cadence) {
-	var workout = WorkoutBlock('warmup',duration,null,power_low,null,power_high);
+function WarmUp(duration, power_low, power_high, cadence, index) {
+	var workout = WorkoutBlock('warmup',duration,null,power_low,null,power_high,null,null,null,null,index);
 	return workout;
 }
-function Ramp(duration, power_low, power_high, cadence, cadence_off) {
-	var workout = WorkoutBlock('ramp',duration,null,power_low,null,power_high,cadence,cadence_off);
+function Ramp(duration, power_low, power_high, cadence, cadence_off, index) {
+	var workout = WorkoutBlock('ramp',duration,null,power_low,null,power_high,cadence,cadence_off,null,null,index);
 	return workout;
 }
-function SteadyState(duration, power, cadence, cadence_off) {
-	var workout = WorkoutBlock('steadystate',duration,null,power,null,null,cadence,cadence_off);
+function SteadyState(duration, power, cadence, cadence_off, index) {
+	var workout = WorkoutBlock('steadystate',duration,null,power,null,null,cadence,cadence_off,null,null,index);
 	return workout;
 }
-function IntervalsT(repeat, duration, duration_off, power_on, power_off, cadence, cadence_off) {
-	var workout = WorkoutBlock('intervalst',duration,duration_off,power_on,power_off,null,cadence,cadence_off,repeat);
+function IntervalsT(repeat, duration, duration_off, power_on, power_off, cadence, cadence_off, index) {
+	var workout = WorkoutBlock('intervalst',duration,duration_off,power_on,power_off,null,cadence,cadence_off,repeat,null,index);
 	return workout;
 }
-function FreeRide(duration, flatroad) {
-	var workout = WorkoutBlock('freeride',duration,null,null,null,null,null,null,null,flatroad);
+function FreeRide(duration, flatroad, index) {
+	var workout = WorkoutBlock('freeride',duration,null,null,null,null,null,null,null,flatroad,index);
 	return workout;
 }
 
 // CUSTOM WORK BLOCKS
-function Progression(duration, powerA, powerB, cadenceA, cadenceB, repeat) {
+function Progression(duration, powerA, powerB, cadenceA, cadenceB, repeat, index) {
 	var workout = [];
 
 	if (typeof repeat === 'undefined' || repeat === null || repeat === 0) repeat = 4;
@@ -580,13 +612,14 @@ function Progression(duration, powerA, powerB, cadenceA, cadenceB, repeat) {
 	if (cadenceA > cadenceB) cadence	= cadenceB;
 
 	for (var b=0;b<repeat;b++) {
-		workout.push(SteadyState(interval,power+(power_increment*b),cadence+(cadence_increment*b),null));
+		workout.push(SteadyState(interval, power+(power_increment*b), cadence+(cadence_increment*b), null, index));
+		if (b == 0) index = -1; // Kill subsequent TextEvents
 	}
 	return workout;
 }
 function SteadyBuild(duration, duration_off, power_low, power_high, cadence_low, cadence_high) {
-	var workout = Progression(duration, power_low, power_high, cadence_low, cadence_high, duration/60, null);
-	workout.splice(0,0,SteadyState(duration_off,power_low,cadence_low,null));
+	var workout = Progression(duration, power_low, power_high, cadence_low, cadence_high, duration/60, 1)
+	workout.splice(0,0,SteadyState(duration_off,power_low,cadence_low,null,0));
 	return workout;
 }
 function ProgressiveWarmup(duration, power_low, power_high, cadence_low, cadence_high, repeat) {
@@ -602,11 +635,11 @@ function CoolDown(duration, power_low, power_high, cadence_low, cadence_high, re
 	return workout;
 }
 function Rest(duration, power) {
-	var workout = SteadyState(duration,power,null,null);
+	var workout = SteadyState(duration,power,null,null,0);
 	return workout;
 }
 function ActiveRest(duration, power, cadence) {
-	var workout = SteadyState(duration,power,cadence,null);
+	var workout = SteadyState(duration,power,cadence,null,0);
 	return workout;
 }
 function SeatedRoller(duration_off, power_off, cadence_off, duration, power, cadence_low, cadence_high, repeat) {
@@ -615,15 +648,15 @@ function SeatedRoller(duration_off, power_off, cadence_off, duration, power, cad
 	if (typeof repeat === 'undefined' || repeat === null || repeat === 0 || repeat === '') repeat = 4;
 
 	// Base
-	workout.push(SteadyState(duration_off,power_off,cadence_off,null));
+	workout.push(SteadyState(duration_off,power_off,cadence_off,null,0));
 
 	var interval = Math.round(duration/repeat);	
 
-	for (var r=0;r<repeat;r++) {
+	for (var r=0;r<repeat;r++) {		
 		// Climb
-		workout.push(SteadyState(interval/2,power,cadence_low,null));
+		workout.push(SteadyState(interval/2,power,cadence_low,null,1));
 		// Descent
-		workout.push(SteadyState(interval/2,power,cadence_high,null));		
+		workout.push(SteadyState(interval/2,power,cadence_high,null,2));		
 	}
 	return workout;
 }
@@ -632,13 +665,13 @@ function StandingRoller(duration, power, cadence_off, cadence, cadence_low, cade
 	var interval = Math.round(duration/4);
 
 	// Base
-	workout.push(SteadyState(interval,power,cadence_off,null));
+	workout.push(SteadyState(interval,power,cadence_off,null,0));
 	// Approach
-	workout.push(SteadyState(interval,power,cadence,null));
+	workout.push(SteadyState(interval,power,cadence,null,1));
 	// Climb
-	workout.push(SteadyState(interval,power,cadence_low,null));
+	workout.push(SteadyState(interval,power,cadence_low,null,2));
 	// Descent
-	workout.push(SteadyState(interval,power,cadence_high,null));
+	workout.push(SteadyState(interval,power,cadence_high,null,3));
 
 	return workout;
 }
@@ -649,15 +682,17 @@ function Paceline(duration, power, cadence, power_low, cadence_low, power_high, 
 	
 	var interval = Math.round(duration/repeat);
 
+	var index = 0;
 	for (var r=0;r<repeat;r++) {
 		// Base
-		workout.push(SteadyState(interval,power,cadence,null));
+		workout.push(SteadyState(interval,power,cadence,null,index));
 		// Approach
-		workout.push(SteadyState(interval,power_low,cadence_low,null));
+		workout.push(SteadyState(interval,power_low,cadence_low,null,2));
 		// Climb
-		workout.push(SteadyState(interval,power_high,cadence_high,null));
+		workout.push(SteadyState(interval,power_high,cadence_high,null,3));
 		// Descent
-		workout.push(SteadyState(interval,power_off,cadence_off,null));
+		workout.push(SteadyState(interval,power_off,cadence_off,null,4));
+		if (r == 0) index = 1;
 	}	
 	return workout;
 }
@@ -665,6 +700,7 @@ function Climbing(duration, power, cadence, power_low, cadence_low, power_high, 
 	var workout = [];
 
 	if (typeof repeat === 'undefined' || repeat === null || repeat === 0 || repeat === '') repeat = 4;
+
 	var interval = Math.round(duration/repeat)/2;
 	
  	var power_progression = power_low;
@@ -677,25 +713,27 @@ function Climbing(duration, power, cadence, power_low, cadence_low, power_high, 
 		cadence_progression = cadence_high;
 	}
 
+	var index = 0;
 	for (var r=0;r<repeat;r++) {
 		// Phase 1
-		workout.push(SteadyState(interval,power,cadence,null));
+		workout.push(SteadyState(interval,power,cadence,null,index));
 		// Phase 2
 		if(repeat > 0) {
-			workout.push(SteadyState(interval,power_progression,cadence_progression,null));
+			workout.push(SteadyState(interval,power_progression,cadence_progression,null,2));
 		} else {
-			workout.push(SteadyState(interval,power_low,cadence_low,null));
+			workout.push(SteadyState(interval,power_low,cadence_low,null,3));
 		}
+		if (r == 0) index = 0;
 	}
 	
 	// Descent
 	if (typeof duration_off !== 'undefined' || duration_off !== null) {
-		workout.push(SteadyState(duration_off,power,cadence_off,null));
+		workout.push(SteadyState(duration_off,power,cadence_off,null,4));
 	}
 	return workout;
 }
 function BigDaddies(repeat, duration, duration_off, power_on, power_off, cadence, cadence_off) {
-	var workout = IntervalsT(repeat, duration, duration_off, power_on, power_off, cadence, cadence_off);
+	var workout = IntervalsT(repeat, duration, duration_off, power_on, power_off, cadence, cadence_off, 0);
 	return workout;
 }
 /*

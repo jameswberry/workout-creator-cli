@@ -2,7 +2,6 @@ var ErrorHandler = require('./error.js');
 
 var textevents = {};
 var event_offsets = {};
-var textevent_setnum = {};
 
 var errors = {
 	'tm-1002': 'Unable to getEvent(). Try addEvent() if \'id\' does not exist: ',
@@ -12,14 +11,51 @@ var errors = {
 
 /***
  *	For phase in Phases {
- *		For classnum in Classes[phase] {
- *			For set in Sets[classnum] {
- *				incrementSetNum(phase,classnum)
- *				addEvent('Message', phase, classnum)
+ *		Classes = Phases[phase]
+ *		For classnum in Classes {
+ *			Blocks = Classes[classnum]
+ *			For block in Blocks {
+ *				incrementBlockNum(phase,classnum)
  *
- *				events = getTextEvents();
+ *				// TextEvents are always appiled at the Block level.
+ *				addEvent(0, 'TextEvent 1', phase, classnum)
+ *				addEvent(0, 'TextEvent 2', phase, classnum)
+ *				addEvent(1, 'TextEvent Index 1', phase, classnum)
+ *				addEvent(2, 'TextEvent Index 2', phase, classnum)
+ *				... 
+ *				addEvent(n, 'TextEvent Index n', phase, classnum)
+ *
+ *				// TextEvent 1 & TextEvent 2
+ *				events = getTextEvents(phase, classnum); // Inferred from IncrementBlockNum, IncrementSetNum, and IncrementIndex
+ *					// or
+ *				events = getTextEvents(phase, classnum, blocknum, 0); // Explicit
+ *
+ *				// TextEvent Index 1-n
+ *				incrementIndexNum(phase,classnum)
+ *				events = getTextEvents(phase, classnum); // Inferred from IncrementBlockNum, IncrementSetNum, and IncrementIndex
+ *					// or
+ *				events = getTextEvents(phase, classnum, blocknum, 1); // Explicit
+ *				...
+ *
+ *				For set in Blocks[block]
+ *					//TextEvent Index 1
+ *					incrementIndexNum(phase,classnum)
+ *					events = getTextEvents(phase, classnum); // Inferred from IncrementBlockNum, IncrementSetNum, and IncrementIndex
+ *						// or
+ *					events = getTextEvents(phase, classnum, blocknum, 1); // Explicit
+ *
+ *					// TextEvent Index 1
+ *					incrementIndexNum(phase,classnum)
+ *					events = getTextEvents(phase, classnum); // Inferred from IncrementBlockNum, IncrementSetNum, and IncrementIndex
+ *						// or
+ *					events = getTextEvents(phase, classnum, blocknum, 2); // Explicit
+ *					...
+ *
+ *					// You may also want to resetIndexNum at this point if you would like TextEvents to repeat.
+ *					resetIndexNum();
+ *				}
  *			}
- *			resetSetNum();
+ *			resetBlockNum(); // Also resets SetNum
  *		}
  *	}
  */
@@ -30,12 +66,16 @@ function TextEvent(offset, message) {
 	return { 'offset': offset, 'message': message };
 }
 
-function getId(phase, classnum, setnum) {
-	return phase+':'+classnum+':'+setnum;
-	if (typeof setnum === 'undefined' || setnum === null) setnum = 0;
+function getBlockId(phase, classnum, blocknum) {
+	return phase+':'+classnum+':'+blocknum;
 }
-function getOffsetId(phase, classnum, setnum) {
-	return phase+':'+classnum+':'+setnum+':offsets';
+function getIndexId(phase, classnum, blocknum, index) {
+	if (typeof blocknum	=== 'undefined' || blocknum	=== null) blocknum	= 0;
+	if (typeof index	=== 'undefined' || index	=== null) index	= 0;
+	return getBlockId(phase,classnum,blocknum)+':'+index;
+}
+function getOffsetId(phase, classnum, blocknum, index) {
+	return getOffsetIdById(getIndexId(phase, classnum, blocknum, index));
 }
 function getOffsetIdById(id) {
 	return id+':offsets';
@@ -44,13 +84,14 @@ function getOffsetIdById(id) {
 /***
  * Return the TextEvent data structure.
  */
-TextEventManager.prototype.getTextEvents = function(phase, classnum, setnum) {
-	if (typeof setnum === 'undefined' || setnum === null) setnum = this.getSetNum(phase,classnum);
+TextEventManager.prototype.getTextEvents = function(index, phase, classnum, blocknum) {
+	// if (typeof blocknum	=== 'undefined' || blocknum === null) blocknum	= this.getBlockNum(phase,classnum);
+	// if (typeof index	=== 'undefined' || index	=== null) index 	= this.getIndexNum(phase,classnum,blocknum);
 
 	this.updateOffsets();
 
-	var offsets = this.getOffsets(phase, classnum, setnum);
-	var events	= this.getEvents(phase, classnum, setnum);
+	var offsets = this.getOffsets(phase,classnum,blocknum,index);
+	var events	= this.getEvents(phase,classnum,blocknum,index);
 	var textevents = [];
 	for(key in events) {
 		textevents.push(TextEvent(offsets[key],events[key]));
@@ -60,40 +101,41 @@ TextEventManager.prototype.getTextEvents = function(phase, classnum, setnum) {
 
 
 /***
- * Increment the associated set number being tracked.
- */
-TextEventManager.prototype.incrementSetNum = function(phase, classnum) {
-	var id = getId(phase,classnum);
-	if (textevent_setnum[id] === undefined) textevent_setnum[id] = -1;
-	return textevent_setnum[id]++;
+ * Increment the associated block number being tracked.
+ *
+TextEventManager.prototype.incrementBlockNum = function(phase, classnum) {
+	var id = getBlockId(phase,classnum);
+	if (typeof textevent_blocknum[id] === 'undefined') textevent_blocknum[id] = -1;
+	return textevent_blocknum[id]++;
 }
 /***
- * Get the associated set number being tracked.
- */
-TextEventManager.prototype.getSetNum = function(phase, classnum) {
-	return textevent_setnum[getId(phase,classnum)];
+ * Get the associated block number being tracked.
+ *
+TextEventManager.prototype.getBlockNum = function(phase, classnum) {
+	return textevent_blocknum[getBlockId(phase,classnum)];
 }
 /***
- * Reset the current set number being tracked.
- */
-TextEventManager.prototype.resetSetNum = function(phase, classnum) {
-	return textevent_setnum[getId(phase,classnum)] = 0;
+ * Reset the current block number being tracked.
+ *
+TextEventManager.prototype.resetBlockNum = function(phase, classnum) {
+	return textevent_blocknum[getBlockId(phase,classnum)] = 0;
 }
+*/
 
 /***
  * Build associated event messages.
  * Note: Events are added in FIFO order!
  * setnum - OPTIONAL
  */
-TextEventManager.prototype.addEvent = function(message, phase, classnum, setnum) {
-	if (typeof setnum === 'undefined' || setnum === null) setnum = this.getSetNum(phase,classnum);
-	return addEventById(getId(phase,classnum,setnum), message);
+TextEventManager.prototype.addEvent = function(index, message, phase, classnum, blocknum) {
+	return addEventById(getIndexId(phase,classnum,blocknum,index), message);
 }
 function addEventById(id, message) {
-	if (typeof textevents[id] !== 'undefined') {
-			textevents[id] += ';'+message;
+	var events = textevents;
+	if (typeof events[id] !== 'undefined') {
+			events[id] += ';'+message;
 	} else {
-		textevents[id] = message;
+		events[id] = message;
 	}
 	return true;
 }
@@ -102,9 +144,8 @@ function addEventById(id, message) {
  * Returns array of individual events.
  * setnum - OPTIONAL
  */
-TextEventManager.prototype.getEvents = function(phase, classnum, setnum) {
-	if (typeof setnum === 'undefined' || setnum === null) setnum = this.getSetNum(phase,classnum);
-	var events = getEventById(getId(phase,classnum,setnum)).split(';');
+TextEventManager.prototype.getEvents = function(phase, classnum, blocknum, index) {
+	var events = getEventById(getIndexId(phase,classnum,blocknum,index)).split(';');
 	if (events[0] !== '') return events;
 }
 function getEventById(id) {
@@ -122,26 +163,25 @@ function getEventById(id) {
 TextEventManager.prototype.updateOffsets = function() {
 	var events = textevents;
 	var offsets = event_offsets;
-	var value = null;
+	var messages = null;
 	
 	for(var key in events) {
-		value = events[key].split(';');
+		messages = events[key].split(';');
 
-		if (typeof offsets[key] !== 'undefined' && offsets[key].split(';').length !== value.length) continue;
+		if (typeof offsets[key] !== 'undefined' && offsets[key].split(';').length !== messages.length) continue;
 		
 		// Caluculate and apply offset values.
-		for(var v=0;v<value.length;v++) {
-			this.addOffsetById(key,v*5)
+		for(var v=0;v<messages.length;v++) {
+			addOffsetByIndexId(key,v*5)
 		}
 	}
 	return true;
 }
-
 /***
- * Add an offset value by event id.
+ * Add an offset value by event IndexID.
  * Note: Offsets are added in FIFO order!
  */
-TextEventManager.prototype.addOffsetById = function(id, offset) {
+addOffsetByIndexId = function(id, offset) {
 	var offsets = event_offsets;
 	if (typeof offsets[id] !== 'undefined') {
 		offsets[id] += offset+';';
@@ -151,18 +191,18 @@ TextEventManager.prototype.addOffsetById = function(id, offset) {
 	return true;
 }
 /***
- * setnum - OPTIONAL
+ * blocknum	- OPTIONAL
+ * index	- OPTIONAL
  */
-TextEventManager.prototype.getOffsets = function(phase, classnum, setnum) {
-	if (typeof setnum === 'undefined' || setnum === null) setnum = this.getSetNum(phase,classnum);
- 	var offsets = getOffsetsById(getId(phase,classnum,setnum));
+TextEventManager.prototype.getOffsets = function(phase, classnum, blocknum, index) {
+ 	var offsets = getOffsetsByIndexId(getIndexId(phase,classnum,blocknum,index));
 	if (typeof offsets === 'string') {
 		return offsets.split(';');
 	} else {
 		return offsets;
 	}
 }
-function getOffsetsById(id) {
+function getOffsetsByIndexId(id) {
 	var offsets = event_offsets;
 	if (typeof offsets[id] !== 'undefined') {
 		return offsets[id];
@@ -172,15 +212,20 @@ function getOffsetsById(id) {
 }
 
 /***
- * setnum - OPTIONAL
+ * blocknum - OPTIONAL
  */
-TextEventManager.prototype.deleteSet = function(phase, classnum, setnum) {
-	if (typeof setnum === 'undefined' || setnum === null) setnum = this.getSetNum(phase,classnum);
-	return deleteSetById(getId(phase,classnum,setnum));
+TextEventManager.prototype.deleteBlock = function(phase, classnum, blocknum) {
+	return deleteBlockById(getBlockId(phase,classnum));
 }
-function deleteSetById(id) {
+function deleteBlockById(id) {
 	var events = textevents;
-	delete events[id]; 
+	// Delete all associated IndexIDs as well.
+	// delete events[id+'*']
+	for(key in events) {
+		if (key.indexOf(id) !== -1) {
+			delete events[id];
+		}
+	}
 }
 
 TextEventManager.prototype.dump = function() {
