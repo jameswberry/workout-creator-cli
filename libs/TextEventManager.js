@@ -1,4 +1,5 @@
-var ErrorHandler = require('./error.js');
+var ErrorHandler = require('./error');
+ErrorHandler = new ErrorHandler();
 
 var textevents = {};
 
