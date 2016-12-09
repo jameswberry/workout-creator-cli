@@ -35,7 +35,7 @@ The following "columns" are required in the input CSV.
 - **Value**
   - A value or message associated with the Phase:Class:Type block.
 - **Offset**
-  - Time offset for blocks of type [TEXTEVENT](#textevent). (Seconds)
+  - Time offset for blocks of type [TEXTEVENT](#textevent). (5 or 10 Second increments)
 - **Repeat**
   - Number of times to repeat the block.
 - **Duration**
@@ -111,5 +111,3 @@ Text events are displayed on the Zwift screen, triggered at the beginning of eac
 	- If you choose to add your own, you will want to confirm that your _Offset_ values take these into consideration.
 
 **TextEvents** are displayed in Zwift for 10 seconds, so it's recommended that _Offset_ values are in multiples of 5 or 10.
-
-**BUG:** Also note that currently there is a bug with _OffSet_ values being overridden with auto-calculated offsets in 5s increments.
