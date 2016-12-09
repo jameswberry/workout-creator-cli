@@ -1,9 +1,12 @@
 // REQUIRE LIBRARIES
-var ErrorHandler = require('./error');
-ErrorHandler = new ErrorHandler();
+var fs			= require('fs');
+var Mustache	= require('mustache');
 
-var TextEventManager = require('./TextEventManager.js');
-TextEvents = new TextEventManager();
+var ErrorHandler	= require('./error');
+ErrorHandler		= new ErrorHandler();
+
+var TextEventManager	= require('./TextEventManager.js');
+TextEvents				= new TextEventManager();
 
 // TODO: Would like to move these into TextEvents library once it's working.
 
@@ -16,7 +19,44 @@ var classnum;
 // Blocknum is required as a global for TextEvents
 var blocknum = -1; // So we can increment it at the beginning of the block loop.
 
+// Templates is used to cache template file reads.
+var templates = {};
+
 function WorkoutProcessor() {}
+
+/**
+ * template - The Mustache template filepath.
+ * view - A single view dataset.
+ * views - OPTIONAL an object containing multiple views. (raw response from this.process method)
+ */
+WorkoutProcessor.prototype.render = function(template, view, views) {
+	var render = {};
+	
+	// Make sure the template has been loaded.
+	loadTemplate(template);
+	
+	if (typeof views !== 'undefined' && views !== null) {
+		// Render multiple views.
+		for(var view in views) {
+			render[view] = Mustache.render(getTemplate(template), views[view]);
+		}
+	} else {
+		// Render a single view.
+		render = Mustache.render(getTemplate(template), view);
+	}
+	return render;
+}
+function loadTemplate(template) {
+	if (typeof getTemplate(template) === 'undefined') {
+		setTemplate(template, fs.readFileSync(template, 'utf8'));
+	}
+}
+function setTemplate(template, data) {
+	return templates[template] = data;
+}
+function getTemplate(template) {
+	return templates[template];
+}
 
 /**
  * csv - csv-to-json conversaion data structure.

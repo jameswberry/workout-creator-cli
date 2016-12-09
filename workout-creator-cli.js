@@ -4,7 +4,6 @@ var Prompt = require('prompt');
 Prompt.message =		'';
 Prompt.delimiter =		' >';
 var Optimist = require('optimist');
-var Mustache = require('mustache');
 var CSVConverter = require('csvtojson').Converter;
 var Converter = new CSVConverter({});
 
@@ -95,18 +94,6 @@ Prompt.get(properties, function (err, result) {
 	var output_file_prefix	= prompts.output;
 	var output_file_suffix	= '.zwo';
 
-	var template = prompts.template;
-	if (prompts.verbose) console.log('Loading Template: '+template);
-	
-	fs.readFile(template, 'utf8', function (err,data) {
-		if (err) {
-			console.log(err);
-			process.exit(0);
-		}
-		template = data;
-		if (prompts.verbose) console.log('Template Load Complete');
-	});
-
 	// CONVERT CSV to JSON
 	if (prompts.verbose) console.log('Loading Data: '+input_filename);
 	Converter.fromFile(input_filename,function(err,result){
@@ -114,16 +101,18 @@ Prompt.get(properties, function (err, result) {
 			console.log(err);
 			process.exit(0);
 		} else {
-			if (prompts.verbose) console.log('Data Load Complete');
+			if (prompts.verbose) console.log('Loaded');
 		}
-		if (prompts.verbose) console.log('Building Views');
 
 		var output = '';
 		var output_file = '';
 		var output_filename = '';
 
+		if (prompts.verbose) console.log('Processing Views');
 		var views = WorkoutProcessor.process(result);
-		if (prompts.verbose) console.log('Views Complete');
+		if (prompts.verbose) console.log('Processed');
+
+		var template = prompts.template;
 
 		var cn, lastphase;
 		for(var view in views) {
@@ -135,14 +124,15 @@ Prompt.get(properties, function (err, result) {
 				output_filename += '0';
 			}
 			output_filename += (cn+1);
-
 			output_file = output_file_prefix+output_filename+output_file_suffix;
+
+			if (prompts.verbose) console.log('Rendering View: '+view);
+			output = WorkoutProcessor.render(template, views[view]);
+			if (prompts.verbose) console.log('Rendered');
+
 			if (prompts.verbose) console.log('Writing File: '+output_file);
-
-			output = Mustache.render(template, views[view]);
-
-			require('fs').writeFileSync(output_file, output);
-			if (prompts.verbose) console.log('File Saved');
+			fs.writeFileSync(output_file, output);
+			if (prompts.verbose) console.log('Written'); console.log(' ');
 			cn++;
 		}
 
