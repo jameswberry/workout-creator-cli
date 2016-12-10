@@ -3,6 +3,8 @@ ErrorHandler = new ErrorHandler();
 
 var textevents = {};
 
+const cMESSAGE_LENGTH = 45;
+
 var errors = {
 	'tm-1002': 'Unable to getEvent(). Try addEvent() if \'id\' does not exist: ',
 	'tm-1003': 'Unable to getOffsets(). Try addOffsets() if \'id\' does not exist: ',
@@ -94,11 +96,18 @@ function addEventById(id, message, priority, offset) {
 	}
 
 	var events = textevents;
-	if (typeof events[id] !== 'undefined') {
-		events[id].push(TextEvent(offset, message));
-	} else {
-		events[id] = [TextEvent(offset, message)];
+	
+	// Ensure event[id] is set the first time.
+	if (typeof events[id] === 'undefined') events[id] = [];
+			
+	// Process compound events and limit string length
+	var messages = message.split(';');
+	if (typeof messages === 'object' && messages.length >= 1) {
+		for (var m=0; m<messages.length; m++) {
+			events[id].push(TextEvent(offset, messages[m].substring(0,cMESSAGE_LENGTH)));
+		}
 	}
+	
 	return true;
 }
 /***
