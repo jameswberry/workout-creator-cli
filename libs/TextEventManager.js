@@ -3,7 +3,7 @@ ErrorHandler = new ErrorHandler();
 
 var textevents = {};
 
-const cMESSAGE_LENGTH = 45;
+const cMESSAGE_LENGTH = 40;
 
 var errors = {
 	'tm-1002': 'Unable to getEvent(). Try addEvent() if \'id\' does not exist: ',
