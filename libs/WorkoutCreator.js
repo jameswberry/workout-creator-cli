@@ -622,7 +622,7 @@ function Climbing(duration, power, cadence, power_low, cadence_low, power_high, 
 		} else {
 			workout.push(SteadyState(interval,power_low,cadence_low,null,3));
 		}
-		if (r == 0) index = 0;
+		if (r == 0) index = 1;
 	}
 	
 	// Descent
