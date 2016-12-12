@@ -9,17 +9,18 @@ Convert CSV data into Zwift Workout Files.
 > git clone https://github.com/jameswberry/workout-creator-cli.git
 
 > cd workout-creator-cli
+> npm install
 
-Interactive mode
-> node workout-creator-cli
+INTERACTIVE MODE
+15 > node workout-creator-cli
 Input [.csv] > (WorkoutCreator.csv) 
 Output Directory > (./) 
 Template [.mustache] > (WorkoutCreator.mustache) 
 Verbose > (true) 
 Debug > (false) 
 
-CLI Args
-> node workout-creator-cli --input WorkoutCreator.csv --output ./ --template WorkoutCreator.mustache -- verbose true --debug true
+CLI ARGS
+23 > node workout-creator-cli --input WorkoutCreator.csv --output ./ --template WorkoutCreator.mustache -- verbose true --debug true
 ```
 
 # CSV Format
