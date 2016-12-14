@@ -505,10 +505,10 @@ function Progression(duration, powerA, powerB, cadenceA, cadenceB, repeat, index
 	var cadence_increment	= (cadenceB-cadenceA)/(repeat-1);
 
 	var power							= powerA;
-	if (powerA > powerB) power			= powerB;
+	if (powerA < powerB) power			= powerB;
 
 	var cadence							= cadenceA;
-	if (cadenceA > cadenceB) cadence	= cadenceB;
+	if (cadenceA < cadenceB) cadence	= cadenceB;
 
 	for (var b=0;b<repeat;b++) {
 		workout.push(SteadyState(interval, power+(power_increment*b), cadence+(cadence_increment*b), null, index));
@@ -529,8 +529,8 @@ function ProgressiveBuild(duration, power_low, power_high, cadence_low, cadence_
 	var workout = Progression(duration, power_low, power_high, cadence_low, cadence_high, repeat);
 	return workout;
 }
-function CoolDown(duration, power_low, power_high, cadence_low, cadence_high, repeat) {
-	var workout = Progression(duration, power_low, power_high, cadence_low, cadence_high, duration/60);
+function CoolDown(duration, power_high, power_low, cadence_high, cadence_low, repeat) {
+	var workout = Progression(duration, power_high, power_low, cadence_high, cadence_low, duration/60);
 	return workout;
 }
 function Rest(duration, power) {
@@ -564,13 +564,13 @@ function StandingRoller(duration, power, cadence_off, cadence, cadence_low, cade
 	var interval = Math.round(duration/4);
 
 	// Base
-	workout.push(SteadyState(interval,power,cadence_off,null,0));
+	workout.push(SteadyState(interval,power,cadence,null,0));
 	// Approach
-	workout.push(SteadyState(interval,power,cadence,null,1));
+	workout.push(SteadyState(interval,power,cadence_low,null,1));
 	// Climb
-	workout.push(SteadyState(interval,power,cadence_low,null,2));
+	workout.push(SteadyState(interval,power,cadence_high,null,2));
 	// Descent
-	workout.push(SteadyState(interval,power,cadence_high,null,3));
+	workout.push(SteadyState(interval,power,cadence_off,null,3));
 
 	return workout;
 }
