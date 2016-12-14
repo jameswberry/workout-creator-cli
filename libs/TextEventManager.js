@@ -101,7 +101,7 @@ function addEventById(id, message, priority, offset) {
 	if (typeof events[id] === 'undefined') events[id] = [];
 			
 	// Process compound events and limit string length
-	var messages = message.split(';');
+	var messages = message.toString().split(';');
 	if (typeof messages === 'object' && messages.length >= 1) {
 		for (var m=0; m<messages.length; m++) {
 			events[id].push(TextEvent(offset, messages[m].substring(0,cMESSAGE_LENGTH)));
