@@ -58,6 +58,35 @@ function getTemplate(template) {
 	return templates[template];
 }
 
+function getDuration(context, phase, classnum, blocknum) {
+	context = initDurations(context, phase, classnum, blocknum);
+	if (typeof blocknum !== 'undefined') return context.durations[phase][classnum][blocknum].duration;
+	if (typeof classnum !== 'undefined') return context.durations[phase][classnum].duration;
+	if (typeof phase	!== 'undefined') return context.durations[phase].duration;
+	return context.durations;
+}
+function getTime(seconds) {
+	var time		= { 'hours': 0, 'minutes': 0, 'seconds': 0 };
+	time.hours		= (seconds/60/60).toString().split('.')[0];
+	time.minutes	= ((seconds-(time.hours*60)*60)/60).toString().split('.')[0];
+	time.seconds	= seconds-(time.hours*60*60)-(time.minutes*60);
+	return time;
+}
+function setDuration(context, duration, phase, classnum, blocknum) {
+	context = initDurations(context, phase, classnum, blocknum);
+	context.durations[phase].duration						+= duration;
+	context.durations[phase][classnum].duration				+= duration;
+	context.durations[phase][classnum][blocknum].duration	+= duration;
+	return context;
+}
+function initDurations(context, phase, classnum, blocknum) {
+	if (typeof context.durations							=== 'undefined') context['durations']							= {};	
+	if (typeof context.durations[phase]						=== 'undefined') context.durations[phase]						= { 'duration': 0 };
+	if (typeof context.durations[phase][classnum]			=== 'undefined') context.durations[phase][classnum]				= { 'duration': 0 };
+	if (typeof context.durations[phase][classnum][blocknum]	=== 'undefined') context.durations[phase][classnum][blocknum]	= { 'duration': 0 };
+	return context;
+}
+
 /**
  * csv - csv-to-json conversaion data structure.
  */
@@ -66,7 +95,7 @@ WorkoutProcessor.prototype.process = function(csv) {
 	var classname;
 	var lastclassnum
 	var type, offset;
-	var workout_id, workout, workouts;
+	var workout_id, workout, workoutblock;
 
 	for(line in csv) {
 		// Convert line to an integer for indexing the csv array later. (searching for adjacent textevents)
@@ -129,7 +158,6 @@ WorkoutProcessor.prototype.process = function(csv) {
 				
 				// Process Workout
 					workout		= null;
-					workouts	= null;
 					switch ( type ) {
 
 				// WORKOUT DETAILS
@@ -422,23 +450,33 @@ WorkoutProcessor.prototype.process = function(csv) {
 					}
 
 				// Apply Processed Workouts
+					workoutblock = [];
 					if(typeof workout !== 'undefined' && workout !== null) {
 						if (workout) {
-							phases[workout_id].workout.push(Comment(type));
 							if (workout.length) {
 								for(var b=0;b<workout.length;b++) {
-									phases[workout_id].workout.push(workout[b]);
+									workoutblock.push(workout[b]);
+									phases = setDuration(phases, workout[b][Object.keys(workout[b])[0]][0].duration,phase,classnum,blocknum);
 								}
 							} else {
-								phases[workout_id].workout.push(workout);
+								workoutblock.push(workout);
+								phases = setDuration(phases, workout[Object.keys(workout)[0]][0].duration,phase,classnum,blocknum);
 							}
+
+							// Add Workout Block Comments
+							phases[workout_id].workout.push(Comment(type,getDuration(phases,phase,classnum,blocknum)));
+							phases[workout_id].workout = phases[workout_id].workout.concat(workoutblock);
 						}
 					} else {
 						if (prompts.verbose) console.log(phase+'-'+classnum+': '+type+' was unable to be processed.');
 					}
-					
 				}
 			}
+		}
+		// Add Class Comment
+		if (classnum !== lastclassnum) {
+			if (classnum===0) console.log(phases[workout_id].workout);
+			phases[workout_id].workout.push(Comment(phase,getDuration(phases,phase)));
 		}
 	}
 	return phases;
@@ -449,8 +487,12 @@ function getWorkoutId(phase, classnum) {
 }
 
 // BASE WORKOUT DATA STRUCTURES
-function Comment(message) {
-	return { 'comment': message.toUpperCase() };
+function Comment(message, duration) {
+	var comment = { 'comment': message.toUpperCase() };
+	if (typeof duration !== 'undefined' && duration !== null) {
+		comment.duration = getTime(duration);
+	}
+	return comment;
 }
 
 function WorkoutBlock(type, duration, duration_off, power, power_off, power_high, cadence, cadence_off, repeat, flatroad, index) {
