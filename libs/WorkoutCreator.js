@@ -475,7 +475,6 @@ WorkoutProcessor.prototype.process = function(csv) {
 		}
 		// Add Class Comment
 		if (classnum !== lastclassnum) {
-			if (classnum===0) console.log(phases[workout_id].workout);
 			phases[workout_id].workout.push(Comment(phase,getDuration(phases,phase)));
 		}
 	}
