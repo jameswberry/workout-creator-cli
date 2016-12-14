@@ -616,20 +616,20 @@ function StandingRoller(duration, power, cadence_off, cadence, cadence_low, cade
 function Paceline(duration, power, cadence, power_low, cadence_low, power_high, cadence_high, power_off, cadence_off, repeat) {
 	var workout = [];
 
-	if (typeof repeat === 'undefined' || repeat === null || repeat === 0 || repeat === '') repeat = 4;
+	if (typeof repeat === 'undefined' || repeat === null || repeat === 0 || repeat === '') repeat = 1;
 	
 	var interval = Math.round(duration/repeat);
 
 	var index = 0;
 	for (var r=0;r<repeat;r++) {
 		// Base
-		workout.push(SteadyState(interval,power,cadence,null,index));
+		workout.push(SteadyState(interval/4,power,cadence,null,index));
 		// Approach
-		workout.push(SteadyState(interval,power_low,cadence_low,null,2));
+		workout.push(SteadyState(interval/4,power_low,cadence_low,null,2));
 		// Climb
-		workout.push(SteadyState(interval,power_high,cadence_high,null,3));
+		workout.push(SteadyState(interval/4,power_high,cadence_high,null,3));
 		// Descent
-		workout.push(SteadyState(interval,power_off,cadence_off,null,4));
+		workout.push(SteadyState(interval/4,power_off,cadence_off,null,4));
 		if (r == 0) index = 1;
 	}	
 	return workout;
