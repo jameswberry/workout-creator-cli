@@ -588,9 +588,8 @@ function SeatedRoller(duration_off, power_off, cadence_off, duration, power, cad
 	// Base
 	workout.push(SteadyState(duration_off,power_off,cadence_off,null,0));
 
-	var interval = Math.round(duration/repeat);	
-
-	for (var r=0;r<repeat;r++) {		
+	var interval = Math.round(duration/repeat,0);	
+	for (var r=0;r<repeat;r++) {
 		// Climb
 		workout.push(SteadyState(interval/2,power,cadence_low,null,1));
 		// Descent
