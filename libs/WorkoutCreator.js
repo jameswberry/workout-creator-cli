@@ -446,7 +446,7 @@ WorkoutProcessor.prototype.process = function(csv) {
 						break;
 					case 'climbingpaceline':
 					default:
-						if (prompts.verbose) console.log('Unsupported Type: [' + type + ']');
+						break;
 					}
 
 				// Apply Processed Workouts
@@ -467,8 +467,6 @@ WorkoutProcessor.prototype.process = function(csv) {
 							phases[workout_id].workout.push(Comment(type,getDuration(phases,phase,classnum,blocknum)));
 							phases[workout_id].workout = phases[workout_id].workout.concat(workoutblock);
 						}
-					} else {
-						if (prompts.verbose) console.log(phase+'-'+classnum+': '+type+' was unable to be processed.');
 					}
 				}
 			}
