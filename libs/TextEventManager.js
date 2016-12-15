@@ -1,15 +1,17 @@
 var ErrorHandler = require('./error');
 ErrorHandler = new ErrorHandler();
 
-var textevents = {};
-
-const cMESSAGE_LENGTH = 40;
+const cOFFSET_INCREMENT		= 10;
+const cMESSAGE_LENGTH		= 40;
+const cMOTIVATION_5SEC_MIN	= 15;
 
 var errors = {
 	'tm-1002': 'Unable to getEvent(). Try addEvent() if \'id\' does not exist: ',
 	'tm-1003': 'Unable to getOffsets(). Try addOffsets() if \'id\' does not exist: ',
 	'tm-1004': 'addEvents() requires an array of events.  Non-array provided.',
 };
+
+var textevents = {};
 
 /***
  *	For phase in Phases {
@@ -63,7 +65,6 @@ var errors = {
  */
 function TextEventManager() {}
 
-
 function TextEvent(offset, message) {
 	return { 'offset': offset, 'message': message };
 }
@@ -73,6 +74,15 @@ function getBlockId(phase, classnum, blocknum) {
 }
 function getIndexId(phase, classnum, blocknum, index) {
 	return getBlockId(phase, classnum, blocknum)+':'+index;
+}
+function getIdParts(id) {
+	var id = id.split(':');
+	return {
+		'phase': 	id[0],
+		'classnum': id[1],
+		'blocknum': id[2],
+		'index': 	id[3],
+	};
 }
 
 /***
@@ -101,20 +111,21 @@ function addEventById(id, message, priority, offset) {
 	if (typeof events[id] === 'undefined') events[id] = [];
 			
 	// Process compound events and limit string length
+
 	var messages = message.toString().split(';');
 	if (typeof messages === 'object' && messages.length >= 1) {
 		for (var m=0; m<messages.length; m++) {
 			events[id].push(TextEvent(offset, messages[m].substring(0,cMESSAGE_LENGTH)));
 		}
 	}
-	
 	return true;
 }
 /***
  * Return the TextEvent data structure.
  */
-TextEventManager.prototype.getTextEvents = function(index, phase, classnum, blocknum) {
+TextEventManager.prototype.getTextEvents = function(index, phase, classnum, blocknum, duration) {
 	var id = getIndexId(phase, classnum, blocknum, index);
+	this.applyMotivations(id,duration);
 	this.updateOffsets(id);
 	return textevents[id];
 }
@@ -140,12 +151,11 @@ function getEventsById(id) {
  * Single pass processor for updating incremental offset values of existing events.
  */
 TextEventManager.prototype.updateOffsets = function(id) {
-	var events			= textevents;
+	var events = textevents;
 
 	// Exit if there are no events for id
 	if (typeof events[id] === 'undefined') return false;
 
-	var increment		= 5;
 	var offset_index	= 1;
 	var priority_index	= 0;
 	var priority_events	= [];
@@ -183,8 +193,8 @@ TextEventManager.prototype.updateOffsets = function(id) {
 		if (typeof static_offsets[new_events[e].offset] === 'undefined') {
 			// Only set non-conflicting offset values.
 			while(offset_search && offset_index <= new_events.length) {
-				if (typeof static_offsets[increment*offset_index] === 'undefined') {
-					new_events[e].offset = increment*offset_index;
+				if (typeof static_offsets[cOFFSET_INCREMENT*offset_index] === 'undefined') {
+					new_events[e].offset = cOFFSET_INCREMENT*offset_index;
 					offset_search = false;
 				}
 				offset_index++;
@@ -210,6 +220,104 @@ function deleteBlockById(id) {
 	for(key in events) {
 		if (key.indexOf(id) !== -1) {
 			delete events[id];
+		}
+	}
+}
+
+// Defined "Motivations" (lowerCase())
+var motivations = {
+	'motivation5': [],
+}
+
+/***
+ * 
+ */
+TextEventManager.prototype.setMotivationAllOn = function(motivation, phase, classnum) {
+	var id = getMotivationAllId(phase, classnum);
+	return setMotivationAll(motivation, id, 1);
+}
+TextEventManager.prototype.setMotivationAllOff = function(motivation, phase, classnum) {
+	var id = getMotivationAllId(phase, classnum);
+	return setMotivationAll(motivation, id, 0);
+}
+function getMotivationAllFromId(motivation, id) {
+	var parts = getIdParts(id);
+	var id	  = getMotivationAllId(parts.phase, parts.classnum);
+	var result = getMotivation(motivation,id);
+	if (!(result >= 1)) return 0;
+	return result;
+}
+function getMotivationAllId(phase, classnum) {
+	return getBlockId(phase, classnum, 'all');
+}
+function setMotivationAll(motivation, id, state, increment) {
+	motivation = motivation.toLowerCase();
+	var parts = getIdParts(id);
+	var id	  = getMotivationAllId(parts.phase, parts.classnum);
+	if (typeof state !== 'undefined' && state !== null) {
+		return motivations[motivation][id] = state;
+	} else {
+		if (increment) {
+			return motivations[motivation][id]++;
+		}
+	}
+}
+
+TextEventManager.prototype.setMotivationOn = function(motivation, phase, classnum, blocknum, index) {
+	var id = getIndexId(phase, classnum, blocknum, index);
+	return setMotivation(motivation, id, 1);
+}
+TextEventManager.prototype.setMotivationOff = function(motivation, id) {
+	return setMotivation(motivation, id, 0);
+}
+function setMotivation(motivation, id, state, increment) {
+	motivation = motivation.toLowerCase();
+	if (typeof state !== 'undefined' && state !== null) {
+		return motivations[motivation][id] = state;
+	} else {
+		if (increment) {
+			return motivations[motivation][id]++;
+		} else {
+			return false;
+		}
+	}
+}
+function getMotivation(motivation, id) {
+	var result = null;
+	var motivation = motivation.toLowerCase();
+	if (typeof motivations[motivation] === 'undefined' ||
+		!(motivations[motivation][id] >= 1)) {
+		result = 0;
+	} else {
+		result = motivations[motivation][id];
+	}
+	return result;
+}
+TextEventManager.prototype.applyMotivations = function(id, duration) {
+	if (typeof duration !== 'undefined' && duration !== null) {
+		for(motivation in motivations) {
+			// Enable the motivation for this block if it's set on globally
+			if (getMotivation(motivation, id) === 0 && getMotivationAllFromId(motivation,id)) setMotivation(motivation, id, 1);
+
+			// Apply "specific "Motivations" that have been turned on.
+			if (getMotivation(motivation, id) || getMotivationAllFromId(motivation,id)) {
+				if (getMotivation(motivation, id) === 1) { // Only apply the motivation once.
+					switch(motivation.toLowerCase()) {
+					case 'motivation5':
+						if (duration >= cMOTIVATION_5SEC_MIN) {
+							addEventById(id, '5        ', null, duration-5);
+							addEventById(id, '  4      ', null, duration-4);
+							addEventById(id, '    3    ', null, duration-3);
+							addEventById(id, '      2  ', null, duration-2);
+							addEventById(id, '        1', null, duration-1);
+						}
+						break;
+					default:
+						break
+					}
+					setMotivation(motivation, id, null, true); // Increment motivation counter
+				}
+			}
 		}
 	}
 }

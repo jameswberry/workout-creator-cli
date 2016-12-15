@@ -101,7 +101,7 @@ Prompt.get(properties, function (err, result) {
 			console.log(err);
 			process.exit(0);
 		} else {
-			if (prompts.verbose) console.log('Loaded');
+			if (prompts.verbose) console.log('  Loaded');
 		}
 
 		var output = '';
@@ -110,30 +110,32 @@ Prompt.get(properties, function (err, result) {
 
 		if (prompts.verbose) console.log('Processing Views');
 		var views = WorkoutProcessor.process(result);
-		if (prompts.verbose) console.log('Processed');
+		if (prompts.verbose) console.log('  Processed');console.log(' ');
 
 		var template = prompts.template;
 
 		var cn, lastphase;
 		for(var view in views) {
-			if (view.split(':')[0] !== lastphase) cn = 0;
-			lastphase = view.split(':')[0];
+			if (view !== 'durations') {
+				if (view.split(':')[0] !== lastphase) cn = 0;
+				lastphase = view.split(':')[0];
 			
-			output_filename = view.split(':')[0]+'-';
-			if(cn+1<10) {
-				output_filename += '0';
+				output_filename = view.split(':')[0]+'-';
+				if(cn+1<10) {
+					output_filename += '0';
+				}
+				output_filename += (cn+1);
+				output_file = output_file_prefix+output_filename+output_file_suffix;
+
+				if (prompts.verbose) console.log('Rendering View: '+view);
+				output = WorkoutProcessor.render(template, views[view]);
+				if (prompts.verbose) console.log('  Rendered');
+
+				if (prompts.verbose) console.log('Writing File: '+output_file);
+				fs.writeFileSync(output_file, output);
+				if (prompts.verbose) console.log('  Written'); console.log(' ');
+				cn++;
 			}
-			output_filename += (cn+1);
-			output_file = output_file_prefix+output_filename+output_file_suffix;
-
-			if (prompts.verbose) console.log('Rendering View: '+view);
-			output = WorkoutProcessor.render(template, views[view]);
-			if (prompts.verbose) console.log('Rendered');
-
-			if (prompts.verbose) console.log('Writing File: '+output_file);
-			fs.writeFileSync(output_file, output);
-			if (prompts.verbose) console.log('Written'); console.log(' ');
-			cn++;
 		}
 
 		if (prompts.debug) console.log(TextEvents.dump());

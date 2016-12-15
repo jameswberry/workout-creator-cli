@@ -31,7 +31,7 @@ function WorkoutProcessor() {}
  */
 WorkoutProcessor.prototype.render = function(template, view, views) {
 	var render = {};
-	
+
 	// Make sure the template has been loaded.
 	loadTemplate(template);
 	
@@ -121,7 +121,7 @@ WorkoutProcessor.prototype.process = function(csv) {
 					}
 					
 					workout_id = getWorkoutId(phase,classnum);
-			
+
 					// Initialize Class Object
 					if (typeof  phases[workout_id] === 'undefined' ) {
 						phases[workout_id] = {
@@ -157,7 +157,7 @@ WorkoutProcessor.prototype.process = function(csv) {
 					}
 				
 				// Process Workout
-					workout		= null;
+					workout	= null;
 					switch ( type ) {
 
 				// WORKOUT DETAILS
@@ -213,6 +213,15 @@ WorkoutProcessor.prototype.process = function(csv) {
 						TextEvents.deleteBlock(phase, classnum, blocknum);
 						break;
 
+					case 'motivation5':
+						// NOTE: Global setting for all blocks.
+						if (csv[line].Value === true) {
+							TextEvents.setMotivationAllOn('Motivation5', phase, classnum);
+						}
+						workout = false;
+						TextEvents.deleteBlock(phase, classnum, blocknum);
+						break;
+
 				// DEFAULT WORKOUT BLOCKS
 					case 'warmup':
 						TextEvents.addEvent(0, 'Warm Up', phase, classnum, blocknum, true);
@@ -236,6 +245,7 @@ WorkoutProcessor.prototype.process = function(csv) {
 						break;
 
 					case 'steadystate':
+						TextEvents.setMotivationOn('Motivation5', phase, classnum, blocknum, 0);
 						TextEvents.addEvent(0, 'Steady State', phase, classnum, blocknum, true);
 					
 						workout = SteadyState(	csv[line].Duration,
@@ -444,29 +454,29 @@ WorkoutProcessor.prototype.process = function(csv) {
 												csv[line].Cadence,
 												csv[line].CadenceOff);
 						break;
-					case 'climbingpaceline':
 					default:
+						workout = false;
 						break;
 					}
 
 				// Apply Processed Workouts
 					workoutblock = [];
-					if(typeof workout !== 'undefined' && workout !== null) {
-						if (workout) {
-							if (workout.length) {
-								for(var b=0;b<workout.length;b++) {
-									workoutblock.push(workout[b]);
-									phases = setDuration(phases, workout[b][Object.keys(workout[b])[0]][0].duration,phase,classnum,blocknum);
-								}
-							} else {
-								workoutblock.push(workout);
-								phases = setDuration(phases, workout[Object.keys(workout)[0]][0].duration,phase,classnum,blocknum);
-							}
 
-							// Add Workout Block Comments
-							phases[workout_id].workout.push(Comment(type,getDuration(phases,phase,classnum,blocknum)));
-							phases[workout_id].workout = phases[workout_id].workout.concat(workoutblock);
+					if(typeof workout !== 'undefined' && workout !== null && workout) {
+						if (workout.length) {
+							for(var b=0;b<workout.length;b++) {
+								workoutblock.push(workout[b]);
+								phases = setDuration(phases, workout[b][Object.keys(workout[b])[0]][0].duration,phase,classnum,blocknum);
+							}
+						} else {
+							workoutblock.push(workout);
+							phases = setDuration(phases, workout[Object.keys(workout)[0]][0].duration,phase,classnum,blocknum);
 						}
+
+						// Add Workout Block Comments
+
+						phases[workout_id].workout.push(Comment(type,getDuration(phases,phase,classnum,blocknum)));
+						phases[workout_id].workout = phases[workout_id].workout.concat(workoutblock);
 					}
 				}
 			}
@@ -493,19 +503,18 @@ function Comment(message, duration) {
 }
 
 function WorkoutBlock(type, duration, duration_off, power, power_off, power_high, cadence, cadence_off, repeat, flatroad, index) {
-	var workout = 				{};
-		workout[type] = [{ 'duration': duration }];
+	var workout			= {};
+		workout[type]	= [{ 'duration': duration }];
 
-	if (duration_off !== null)	workout[type][0]['duration_off']	= duration_off;	
+	if (duration_off !== null)	workout[type][0]['duration_off']	= duration_off;
 	if (power !== null)			workout[type][0]['power']			= power;	
 	if (power_off !== null)		workout[type][0]['power_off']		= power_off;	
 	if (power_high !== null)	workout[type][0]['power_high']		= power_high;	
 	if (cadence !== null)		workout[type][0]['cadence']			= cadence;	
 	if (cadence_off !== null)	workout[type][0]['cadence_off']		= cadence_off;	
 	if (repeat !== null)		workout[type][0]['repeat']			= repeat;	
-	if (flatroad !== null)		workout[type][0]['flatroad']		= flatroad;	
-	workout[type][0]['textevent']									= TextEvents.getTextEvents(index, phase, classnum, blocknum);
-
+	if (flatroad !== null)		workout[type][0]['flatroad']		= flatroad;
+	workout[type][0]['textevent']									= TextEvents.getTextEvents(index, phase, classnum, blocknum, duration);
 	return workout;	
 }
 
