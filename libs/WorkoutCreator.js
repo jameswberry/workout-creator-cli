@@ -8,6 +8,34 @@ ErrorHandler		= new ErrorHandler();
 var TextEventManager	= require('./TextEventManager.js');
 TextEvents				= new TextEventManager();
 
+var Block;
+var Blocks		= {};
+
+// Load Detail Blocks
+var block_dir	= __dirname+'/../details/';
+var block_files	= fs.readdirSync(block_dir);
+for(var f=0;f<block_files.length;f++) {
+	if (block_files[f].charAt(0) !== '.' && block_files[f].charAt(0) !== '_') {
+		block_file			= block_files[f];
+		block_name			= block_file.split('.')[0].toLowerCase();
+		Block 				= require(block_dir+block_file);
+		Blocks[block_name]	= new Block();
+	}
+}
+
+// Load Workout Blocks
+var block_dir	= __dirname+'/../blocks/';
+var block_files	= fs.readdirSync(block_dir);
+for(var f=0;f<block_files.length;f++) {
+	if (block_files[f].charAt(0) !== '.' && block_files[f].charAt(0) !== '_') {
+		block_file			= block_files[f];
+		block_name			= block_file.split('.')[0].toLowerCase();
+		Block 				= require(block_dir+block_file);
+		Blocks[block_name]	= new Block();
+	}
+}
+console.log(Blocks);
+
 // TODO: Would like to move these into TextEvents library once it's working.
 
 // Phase is required as a global for TextEvents
@@ -73,6 +101,7 @@ function getTime(seconds) {
 	return time;
 }
 function setDuration(context, duration, phase, classnum, blocknum) {
+	if (typeof duration === 'undefined') duration = 0;
 	context = initDurations(context, phase, classnum, blocknum);
 	context.durations[phase].duration						+= duration;
 	context.durations[phase][classnum].duration				+= duration;
@@ -95,7 +124,7 @@ WorkoutProcessor.prototype.process = function(csv) {
 	var classname;
 	var lastclassnum
 	var type, offset;
-	var workout_id, workout, workoutblock;
+	var workout_id, workout, workoutblock, processed;
 
 	for(line in csv) {
 		// Convert line to an integer for indexing the csv array later. (searching for adjacent textevents)
@@ -155,72 +184,28 @@ WorkoutProcessor.prototype.process = function(csv) {
 							}
 						}
 					}
-				
-				// Process Workout
+
 					workout	= null;
+
+					// Process Details, Standard, and Custom Blocks
+					processed = false;
+					if (typeof Blocks[type] !== 'undefined') {
+						Blocks[type].init({
+							'Blocks':		Blocks,
+							'Phases':		phases,
+							'TextEvents':	TextEvents,
+							'Line':			csv[line],
+							'id': 			workout_id,
+							'Phase': 		phase,
+							'Classnum': 	classnum,
+							'Blocknum': 	blocknum
+						});
+						workout = Blocks[type].process();
+						processed = true;
+					}
+
+				// Process Workout
 					switch ( type ) {
-
-				// WORKOUT DETAILS
-					case 'author':
-						phases[workout_id].author = csv[line].Value;
-						workout = false;
-						TextEvents.deleteBlock(phase, classnum, blocknum);
-						break;
-
-					case 'name':
-						if (csv[line].Class<10) {
-							classname = '0'+csv[line].Class;
-						} else { 
-							classname = csv[line].Class;
-						}
-						phases[workout_id].name = csv[line].Phase+' #'+classname+': '+csv[line].Value;
-						workout = false;
-						TextEvents.deleteBlock(phase, classnum, blocknum);
-						break;
-
-					case 'description':
-						phases[workout_id].description = csv[line].Value;
-						workout = false;
-						TextEvents.deleteBlock(phase, classnum, blocknum);
-						break;
-
-					case 'sport':
-						phases[workout_id].sport = csv[line].Value.toLowerCase();
-						workout = false;
-						TextEvents.deleteBlock(phase, classnum, blocknum);
-						break;
-
-					case 'tag':
-						// Initialize Tags
-						if (typeof phases[workout_id].tag	=== 'undefined') {
-							phases[workout_id].tags = true;
-							phases[workout_id].tag = [];
-						}
-						if (csv[line].Value.toLowerCase() == 'recovery' ||
-							csv[line].Value.toLowerCase() == 'intervals' ||
-							csv[line].Value.toLowerCase() == 'ftp' ||
-							csv[line].Value.toLowerCase() == 'tt') {
-								csv[line].Value = csv[line].Value.toUpperCase();
-						}
-						phases[workout_id].tag.push({ 'name': csv[line].Value });
-						workout = false;
-						TextEvents.deleteBlock(phase, classnum, blocknum);
-						break;
-
-					case 'textevent':
-						// NOTE: Should never get here because we have already skipped this processing for TextEvents.
-						workout = false;
-						TextEvents.deleteBlock(phase, classnum, blocknum);
-						break;
-
-					case 'motivation5':
-						// NOTE: Global setting for all blocks.
-						if (csv[line].Value === true) {
-							TextEvents.setMotivationAllOn('Motivation5', phase, classnum);
-						}
-						workout = false;
-						TextEvents.deleteBlock(phase, classnum, blocknum);
-						break;
 
 				// DEFAULT WORKOUT BLOCKS
 					case 'warmup':
@@ -239,17 +224,6 @@ WorkoutProcessor.prototype.process = function(csv) {
 						workout = Ramp(			csv[line].Duration,
 												csv[line].Power,
 												csv[line].PowerHigh,
-												csv[line].Cadence,
-												csv[line].CadenceOff,
-												0);
-						break;
-
-					case 'steadystate':
-						TextEvents.setMotivationOn('Motivation5', phase, classnum, blocknum, 0);
-						TextEvents.addEvent(0, 'Steady State', phase, classnum, blocknum, true);
-					
-						workout = SteadyState(	csv[line].Duration,
-												csv[line].Power,
 												csv[line].Cadence,
 												csv[line].CadenceOff,
 												0);
@@ -288,17 +262,6 @@ WorkoutProcessor.prototype.process = function(csv) {
 												csv[line].Repeat);
 						break;
 
-					case 'steadybuild':
-						TextEvents.addEvent(0, 'Steady Build', phase, classnum, blocknum, true);
-						
-						workout = SteadyBuild(	csv[line].Duration,
-												csv[line].DurationOff,
-												csv[line].PowerLow,
-												csv[line].PowerHigh,
-												csv[line].CadenceLow,
-												csv[line].CadenceHigh);
-						break;
-
 					case 'progressivebuild':
 						TextEvents.addEvent(0, 'Progressive Build', phase, classnum, blocknum, true);
 						TextEvents.addEvent(0, 'Build power and cadence together', phase, classnum, blocknum, true);
@@ -309,18 +272,6 @@ WorkoutProcessor.prototype.process = function(csv) {
 												csv[line].CadenceLow,
 												csv[line].CadenceHigh,
 												csv[line].Repeat);
-						break;
-
-					case 'progression':
-						TextEvents.addEvent(0, 'Progressive Build', phase, classnum, blocknum, true);
-						
-						workout = Progression(	csv[line].Duration,
-												csv[line].PowerLow,
-												csv[line].PowerHigh,
-												csv[line].CadenceLow,
-												csv[line].CadenceHigh,
-												csv[line].Repeat,
-												0);
 						break;
 
 					case 'rest':
@@ -455,7 +406,7 @@ WorkoutProcessor.prototype.process = function(csv) {
 												csv[line].CadenceOff);
 						break;
 					default:
-						workout = false;
+						//workout = false;
 						break;
 					}
 
