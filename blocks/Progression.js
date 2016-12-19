@@ -16,7 +16,7 @@ Block.prototype.init = function (params)	{ setParams(params); }
  *
  */
 Block.prototype.process = function () {
-	Context = getParams();
+	var Context = getParams();
 	
 	// Add Block Options
 		// N/A
@@ -38,7 +38,7 @@ Block.prototype.process = function () {
  *
  */
 Block.prototype.render = function(duration, powerA, powerB, cadenceA, cadenceB, repeat, index) {
-	Context = getParams();
+	var Context = getParams();
 
 	// Dependent Blocks and Context Passing
 	var SteadyState	= Context.Blocks.steadystate;

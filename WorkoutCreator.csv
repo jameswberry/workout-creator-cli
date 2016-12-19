@@ -8,6 +8,7 @@ WorkoutCreator,1,Tag,INTERVALS,,,,,,,,,,,,
 WorkoutCreator,1,Tag,FTP,,,,,,,,,,,,
 WorkoutCreator,1,Tag,TT,,,,,,,,,,,,
 WorkoutCreator,1,Tag,,,,,,,,,,,,,
+WorkoutCreator,1,Motivation5,TRUE,,,,,,,,,,,,
 WorkoutCreator,1,Warmup,Warmup Block,,,600,,0.24880478,,0.75079679,,100,,,0
 WorkoutCreator,1,SteadyState,,,,300,,0.49980077,,,,90,,,0
 WorkoutCreator,1,SteadyState,,,,300,,0.65119523,,,,0,,,0

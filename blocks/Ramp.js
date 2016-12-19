@@ -6,7 +6,6 @@ function Block()			{}
 function setParams(params)	{ return Params = params; }
 function getParams()		{ return Params; }
 
-
 /**
  *
  */
@@ -19,15 +18,15 @@ Block.prototype.process = function () {
 	var Context = getParams();
 	
 	// Add Block Options
-	Context.TextEvents.setMotivationOn('Motivation5', Context.Phase, Context.Classnum, Context.Blocknum, 0);
-	Context.TextEvents.setMotivationOn('Motivation30', Context.Phase, Context.Classnum, Context.Blocknum, 0);
+	//Context.TextEvents.setMotivationOn('Motivation5', Context.Phase, Context.Classnum, Context.Blocknum, 0);
 	
 	// Add Text Events
-	Context.TextEvents.addEvent(0, 'Steady State', Context.Phase, Context.Classnum, Context.Blocknum, true);
+	Context.TextEvents.addEvent(0, 'Ramp', Context.Phase, Context.Classnum, Context.Blocknum, true);
 
 	// Render Block
 	return this.render(	Context.Line.Duration,
 						Context.Line.Power,
+						Context.Line.PowerHigh,
 						Context.Line.Cadence,
 						Context.Line.CadenceOff,
 						0);
@@ -36,19 +35,19 @@ Block.prototype.process = function () {
 /**
  *
  */
-Block.prototype.render = function(duration, power, cadence, cadence_off, index) {
+Block.prototype.render = function(duration, power_low, power_high, cadence, cadence_off, index) {
 	var Context = getParams();
 
-	// Dependent Blocks and Context Passing
+	// Dependent Blocks.
 	var WorkoutBlock = require('../libs/WorkoutBlock');
 	
 	// Render Block
-	var workout = WorkoutBlock('steadystate',
-								duration,
+	var workout = WorkoutBlock('ramp',
+			 					duration,
 								null,
-								power,
+								power_low,
 								null,
-								null,
+								power_high,
 								cadence,
 								cadence_off,
 								null,

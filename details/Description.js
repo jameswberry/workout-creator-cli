@@ -22,28 +22,4 @@ Block.prototype.process = function () {
 	return false;	//return this.render(duration, duration_off, power, power_off, power_high, cadence, cadence_off, repeat, flatroad, textevents);
 }
 
-/**
- *
- */
-Block.prototype.render = function(duration, duration_off, power, power_off, power_high, cadence, cadence_off, repeat, flatroad, textevents) {
-	var Context = getParams();
-
-	// Dependent Blocks and Context Passing
-	var WorkoutBlock = require('../libs/WorkoutBlock');
-	
-	// Render Block
-	var workout = WorkoutBlock.render('type',
-		 					 			duration,
-										duration_off,
-										power,
-										power_off,
-										power_high,
-										cadence,
-										cadence_off,
-										repeat,
-										flatroad,
-										textevents);
-	return workout;
-}
-
 module.exports = Block;

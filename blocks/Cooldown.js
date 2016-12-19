@@ -6,7 +6,6 @@ function Block()			{}
 function setParams(params)	{ return Params = params; }
 function getParams()		{ return Params; }
 
-
 /**
  *
  */
@@ -19,47 +18,37 @@ Block.prototype.process = function () {
 	var Context = getParams();
 	
 	// Add Block Options
-		// N/A
+	//Context.TextEvents.setMotivationOn('Motivation5', Context.Phase, Context.Classnum, Context.Blocknum, 0);
 	
 	// Add Text Events
-	Context.TextEvents.addEvent(0, 'Steady Build', Context.Phase, Context.Classnum, Context.Blocknum, true);
+	Context.TextEvents.addEvent(0, 'Cool Down', Context.Phase, Context.Classnum, Context.Blocknum, true);
 
 	// Render Block
 	return this.render(	Context.Line.Duration,
-						Context.Line.DurationOff,
 						Context.Line.PowerLow,
 						Context.Line.PowerHigh,
 						Context.Line.CadenceLow,
-						Context.Line.CadenceHigh);
+						Context.Line.CadenceHigh,
+						Context.Line.Repeat);
 }
 
 /**
  *
  */
-Block.prototype.render = function(duration, duration_off, power_low, power_high, cadence_low, cadence_high) {
+Block.prototype.render = function(duration, power_low, power_high, cadence_low, cadence_high, repeat) {
 	var Context = getParams();
 
-	// Dependent Blocks and Context Passing
+	// Dependent Blocks.
 	var Progression	= Context.Blocks.progression;
 	Progression.init(Context);
-
-	var SteadyState	= Context.Blocks.steadystate;
-	SteadyState.init(Context);
 	
 	// Render Block
-	var workout = Progression.render(	duration,
-		 								power_low,
-			 							power_high,
-										cadence_low,
-										cadence_high,
-										duration/60,
-										1);
-
-	workout.splice(0,0,SteadyState.render(	duration_off,
-											power_low,
-											cadence_low,
-											null,
-											0));
+	var workout = Progression.render(duration,
+									 power_low,
+									 power_high,
+									 cadence_low,
+									 cadence_high,
+									 duration/60);
 	return workout;
 }
 
