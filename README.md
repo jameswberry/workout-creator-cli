@@ -99,6 +99,7 @@ Supports all of the default ZWO blocks, as well as custom workout block options.
 - **PaceLine**
 - **Cooldown**
 - **BigDaddies**
+- **Motivation5**
 
 ## TextEvent
 Text events are displayed on the Zwift screen, triggered at the beginning of each workout block.  They can be added in three ways:

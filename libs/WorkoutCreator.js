@@ -34,7 +34,6 @@ for(var f=0;f<block_files.length;f++) {
 		Blocks[block_name]	= new Block();
 	}
 }
-console.log(Blocks);
 
 // TODO: Would like to move these into TextEvents library once it's working.
 
