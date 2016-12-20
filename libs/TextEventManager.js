@@ -227,6 +227,7 @@ function deleteBlockById(id) {
 // Defined "Motivations" (lowerCase())
 var motivations = {
 	'motivation5': [],
+	'motivation30': [],
 }
 
 /***
