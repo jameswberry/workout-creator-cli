@@ -27,8 +27,6 @@ Block.prototype.process = function () {
 	Context.TextEvents.addEvent(2, 'Stand', Context.Phase, Context.Classnum, Context.Blocknum);
 	Context.TextEvents.addEvent(3, 'Descent!', Context.Phase, Context.Classnum, Context.Blocknum);
 
-	console.log(Context.Line);
-
 	// Render Block
 	return this.render(	Context.Line.Duration,
 						Context.Line.Power,
