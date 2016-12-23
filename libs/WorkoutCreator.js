@@ -159,7 +159,6 @@ WorkoutProcessor.prototype.process = function(csv) {
 					
 					// Increment the Block Number
 					blocknum++;
-					console.log(lastphase+':'+lastclassnum+':'+blocknum+' - '+phase+':'+classnum+':'+blocknum);
 					
 					workout_id = getWorkoutId(phase,classnum);
 					if (typeof lastworkout_id === 'undefined') lastworkout_id = workout_id;
