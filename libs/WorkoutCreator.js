@@ -108,10 +108,25 @@ function setDuration(context, duration, phase, classnum, blocknum) {
 	return context;
 }
 function initDurations(context, phase, classnum, blocknum) {
-	if (typeof context.durations							=== 'undefined') context['durations']							= {};	
-	if (typeof context.durations[phase]						=== 'undefined') context.durations[phase]						= { 'duration': 0 };
-	if (typeof context.durations[phase][classnum]			=== 'undefined') context.durations[phase][classnum]				= { 'duration': 0 };
-	if (typeof context.durations[phase][classnum][blocknum]	=== 'undefined') context.durations[phase][classnum][blocknum]	= { 'duration': 0 };
+	if (typeof context.durations							=== 'undefined') context['durations']																= {};
+	if (typeof phase										!== 'undefined' &&
+		typeof context.durations[phase]						=== 'undefined'
+		) {
+			context.durations[phase] = { 'duration': 0 };
+	}
+	if (typeof phase										!== 'undefined' &&
+		typeof classnum										!== 'undefined' &&
+		typeof context.durations[phase][classnum]			=== 'undefined'
+		) {
+			context.durations[phase][classnum] = { 'duration': 0 };
+	}
+	if (typeof phase										!== 'undefined' &&
+		typeof classnum										!== 'undefined' &&
+		typeof blocknum 									!== 'undefined' &&
+		typeof context.durations[phase][classnum][blocknum]	=== 'undefined'
+		) {
+			context.durations[phase][classnum][blocknum] = { 'duration': 0 };
+	}
 	return context;
 }
 
@@ -120,10 +135,12 @@ function initDurations(context, phase, classnum, blocknum) {
  */
 WorkoutProcessor.prototype.process = function(csv) {
 	var phases = {};
+	var lastphase;
 	var classname;
-	var lastclassnum
+	var lastclassnum = 0;
+	var blocknum = -1;
 	var type, offset;
-	var workout_id, workout, workoutblock, processed;
+	var lastworkout_id, workout_id, workout, workoutblock, processed;
 
 	for(line in csv) {
 		// Convert line to an integer for indexing the csv array later. (searching for adjacent textevents)
@@ -131,9 +148,9 @@ WorkoutProcessor.prototype.process = function(csv) {
 
 		if (csv[line].Phase != '') {
 			phase = csv[line].Phase;
+			if (typeof lastphase === 'undefined') lastphase = phase;
 
 			if (csv[line].Class != '' ) {
-				lastclassnum = classnum; // Store for Blocknum comparitor.
 				classnum	 = csv[line].Class-1;
 				type		 = csv[line].Type.toLowerCase();
 
@@ -141,14 +158,11 @@ WorkoutProcessor.prototype.process = function(csv) {
 				if (type !== 'textevent') {
 					
 					// Increment the Block Number
-					if (classnum === lastclassnum) {
-						blocknum++;
-					} else {
-						// Reset Block Number when moving between Classes.
-						blocknum = 0; 
-					}
+					blocknum++;
+					console.log(lastphase+':'+lastclassnum+':'+blocknum+' - '+phase+':'+classnum+':'+blocknum);
 					
 					workout_id = getWorkoutId(phase,classnum);
+					if (typeof lastworkout_id === 'undefined') lastworkout_id = workout_id;
 
 					// Initialize Class Object
 					if (typeof  phases[workout_id] === 'undefined' ) {
@@ -225,9 +239,16 @@ WorkoutProcessor.prototype.process = function(csv) {
 				}
 			}
 		}
+		
 		// Add Class Comment
-		if (classnum !== lastclassnum) {
-			phases[workout_id].workout.push(Comment(phase,getDuration(phases,phase)));
+		if (lastclassnum !== classnum || line === csv.length-1) {
+			phases[lastworkout_id].workout.splice(0,0, Comment(phase,getDuration(phases,lastphase,lastclassnum)));
+			
+			// Reset and Track Previous Lines
+			lastworkout_id = workout_id;
+			lastphase	 = phase;
+			lastclassnum = classnum;
+			blocknum	 = -1;
 		}
 	}
 	return phases;
