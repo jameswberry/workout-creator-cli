@@ -40,6 +40,8 @@ Block.prototype.process = function () {
 Block.prototype.render = function(repeat, duration, duration_off, power_on, power_off, cadence, cadence_off, index) {
 	var Context = getParams();
 
+	if (typeof repeat === 'undefined' || repeat === null || repeat === 0 || repeat === '') repeat = 1;
+	
 	// Dependent Blocks.
 	var WorkoutBlock = require('../libs/WorkoutBlock');
 
