@@ -37,11 +37,17 @@ Block.prototype.process = function () {
 						Context.Line.CadenceOff);
 }
 
+const cEFFORT_DURATION = 20;
+
 /**
  *
  */
 Block.prototype.render = function(repeat, duration, duration_off, power_on, power_off, cadence, cadence_off) {
 	var Context = getParams();
+
+	if (typeof duration_off === 'undefined' || duration_off === null) {
+		duration_off = ((duration*60)/repeat)-cEFFORT_DURATION;
+		duration = cEFFORT_DURATION;
 
 	// Dependent Blocks.
 	var IntervalsT = Context.Blocks.intervalst;
