@@ -48,7 +48,8 @@ Block.prototype.render = function(repeat, duration, duration_off, power_on, powe
 	if (typeof duration_off === 'undefined' || duration_off === null) {
 		duration_off = ((duration*60)/repeat)-cEFFORT_DURATION;
 		duration = cEFFORT_DURATION;
-
+	}
+	
 	// Dependent Blocks.
 	var IntervalsT = Context.Blocks.intervalst;
 	IntervalsT.init(Context);
