@@ -75,14 +75,14 @@ Block.prototype.render = function(duration, power, cadence, power_low, cadence_l
 		if(repeat > 0) {
 			workout.push(SteadyState.render(interval,power_progression,cadence_progression,null,2));
 		} else {
-			workout.push(SteadyState.render(interval,power_low,cadence_low,null,3));
+			workout.push(SteadyState.render(interval,power_low,cadence_low,null,2));
 		}
 		if (r == 0) index = 1;
 	}
 
 	// Descent
 	if (typeof duration_off !== 'undefined' || duration_off !== null) {
-		workout.push(SteadyState.render(duration_off,power,cadence_off,null,4));
+		workout.push(SteadyState.render(duration_off,power,cadence_off,null,3));
 	}
 	
 	return workout;
